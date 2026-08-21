@@ -1,0 +1,46 @@
+# RoSpot
+
+Community map of Romanian places in the US. Expo (React Native) mobile app for iOS + Android, Supabase backend (project `rospot`, `us-east-2`).
+
+## Commands
+
+```sh
+bun install              # dependencies (use `npx expo install <pkg>` for anything Expo resolves)
+bun run typecheck        # tsc --noEmit
+npm test                 # Jest — see the note below, `bun run test` does not work
+bun run android          # dev server for a connected device
+npx expo export --platform android   # bundles for Android; the closest thing to a boot check without a device
+```
+
+**Tests run under `npm`, not `bun`.** `bun run` puts a `node` shim on PATH that is Bun
+itself, and Jest cannot run on Bun's runtime.
+
+Supabase migrations go through the CLI with `SUPABASE_ACCESS_TOKEN` from `.env`:
+`supabase db push --linked`, then regenerate types into `src/data/database.types.ts`
+with `supabase gen types typescript --linked --schema public`.
+
+## Architecture
+
+- `src/app/` — Expo Router routes. `(tabs)` holds Map / List / Add / Profile.
+- `src/data/` — **the only place that touches supabase-js.** Screens and hooks import
+  functions from here, never the client, so the query surface stays auditable against
+  the RLS policies. `src/data/__tests__/places.rls.test.ts` asserts the policies against
+  the real project (no Docker on this machine, so there is no local stack).
+- `src/i18n/` — Romanian and English, device locale by default. All UI copy lives here;
+  user-submitted content is shown as written.
+- `src/theme.ts` — palette, mirrored in `tailwind.config.js` because navigator options
+  take plain values rather than NativeWind classes.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues on cbalaur91/ro-spot (via the `gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `CONTEXT.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
