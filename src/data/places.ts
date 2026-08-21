@@ -1,9 +1,6 @@
 import type { Database } from './database.types';
 import { supabase } from './supabase';
 
-export type PlaceCategory = Database['public']['Enums']['place_category'];
-export type PlaceStatus = Database['public']['Enums']['place_status'];
-
 export type Place = Database['public']['Tables']['places']['Row'];
 
 /**

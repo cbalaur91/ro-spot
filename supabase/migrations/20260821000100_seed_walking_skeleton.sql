@@ -1,10 +1,9 @@
--- Walking-skeleton fixtures (issue #2). Two rows with fixed ids so the RLS
--- integration test can assert on them by id:
---   * one approved place, which is what the List tab renders
---   * one pending place, which anonymous clients must never see
+-- The first real place on the map, with a fixed id so the walking-skeleton tests
+-- can assert on it. The launch seed (issue "Seed Metro Detroit places") replaces
+-- this with the owner's full list; the coordinates here are approximate.
 --
--- The launch seed (issue "Seed Metro Detroit places") replaces the approved row
--- with the owner's real list; its coordinates here are approximate.
+-- Only real content lives in migrations. The RLS suite creates and deletes its
+-- own pending row, so no test fixture ends up in permanent schema history.
 
 insert into public.places (id, name, category, description, address, lat, lng, status)
 values (
@@ -16,18 +15,5 @@ values (
   42.4576,
   -83.2409,
   'approved'
-)
-on conflict (id) do nothing;
-
-insert into public.places (id, name, category, description, address, lat, lng, status)
-values (
-  '00000000-0000-4000-8000-000000000002',
-  'RLS fixture — pending place (do not approve)',
-  'food_drink',
-  'Test fixture proving anonymous clients cannot read pending places. Not a real place.',
-  '1 Test St, Southfield, MI 48075',
-  42.4600,
-  -83.2500,
-  'pending'
 )
 on conflict (id) do nothing;

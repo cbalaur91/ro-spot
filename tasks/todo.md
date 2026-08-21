@@ -47,6 +47,8 @@ device screenshot.
 - [x] E. RLS integration test with the anon key → verified: 4 assertions — pending row invisible by id, unfiltered anon read returns approved only, anon insert rejected
 - [x] F. i18n shell (i18next + expo-localization, RO+EN) → verified: List tab test asserts both `Historic` and `Istoric`, and that the place name is never translated
 - [x] G. List tab renders the seeded approved place → verified: 10/10 tests green (`npm test`)
+- [x] H. Code review (standards + spec axes) and fixes → verified: `bun run lint` clean after adding the gate; fixture moved out of schema history; RLS suite skips cleanly on a credential-less clone
+- [x] I. Push to GitHub → verified: `git ls-remote --heads origin` shows `main`
 
 ## Review
 
@@ -72,9 +74,23 @@ Not built (deliberately out of this slice): `reports` and `profiles` tables, the
 column and storage bucket, insert/update policies (RLS denies all writes until the
 submission slice adds them), and `expo-image`.
 
+Changed after the two-axis code review:
+- The pending test fixture no longer ships as a migration. Migrations carry only real
+  content; the RLS suite creates its own pending row in `beforeAll` and deletes it in
+  `afterAll`, so nothing test-shaped lives in schema history or in the live table. The
+  row the first migration had already written was removed from `rospot`.
+- Added the missing `lint` gate (`eslint` + `eslint-config-expo`) and fixed what it
+  found.
+- The list test now builds its fixture from `src/data/fixtures.ts` instead of a second
+  copy of the row, which had already drifted.
+- `jest.config.js` drops the RLS suite when Supabase credentials are absent, so a fresh
+  clone runs the component tests instead of failing at import.
+- Flattened the List screen's three-way `<Header />` duplication; typed `ComingSoon`'s
+  key to the locale file; dropped unused exports from `places.ts` and `i18n/index.ts`.
+
 Follow-ups worth an issue:
-- Replace the fixture rows with the real Metro Detroit seed, and delete
-  `RLS fixture — pending place`.
+- Replace the seeded cathedral with the owner's real Metro Detroit list.
 - Custom fonts — the type scale is deliberate but the faces are still system defaults.
 - `jest` prints "a worker process has failed to exit gracefully" from the jest-expo
   preset. Exit code is 0 and `--detectOpenHandles` reports nothing; cosmetic.
+- `bun run test` still can't work while Bun is installed as a snap (see CLAUDE.md).

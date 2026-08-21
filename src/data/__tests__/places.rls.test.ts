@@ -7,12 +7,13 @@
  * the "Approved places are publicly readable" policy — or widen it to all
  * statuses — and this test fails.
  *
- * Requires EXPO_PUBLIC_SUPABASE_* and SUPABASE_SERVICE_ROLE_KEY in .env.
+ * `jest.config.js` drops this file from the run when the Supabase env is absent,
+ * so a fresh clone doesn't fail on missing credentials.
  */
 import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '../database.types';
-import { SEEDED_APPROVED_PLACE_ID, SEEDED_PENDING_PLACE_ID } from '../fixtures';
+import { SEEDED_APPROVED_PLACE, SEEDED_APPROVED_PLACE_ID } from '../fixtures';
 import { fetchApprovedPlaces } from '../places';
 import { supabase } from '../supabase';
 
@@ -27,28 +28,43 @@ const serviceRole = createClient<Database>(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
 
-afterAll(() => {
+// Owned by this suite rather than by a migration — a row that exists only to be
+// invisible has no business in permanent schema history.
+const PENDING_FIXTURE_ID = '00000000-0000-4000-8000-0000000000ff';
+
+beforeAll(async () => {
+  const { error } = await serviceRole.from('places').upsert({
+    id: PENDING_FIXTURE_ID,
+    name: 'RLS suite fixture — pending place',
+    category: 'food_drink',
+    description: 'Created and removed by the RLS suite. Not a real place.',
+    address: '1 Test St, Southfield, MI 48075',
+    lat: 42.46,
+    lng: -83.25,
+    status: 'pending',
+  });
+
+  if (error) throw new Error(`Could not seed the pending fixture: ${error.message}`);
+});
+
+afterAll(async () => {
   // The app's client refreshes tokens on an interval; without this Jest hangs on
   // the open timer after the last assertion.
   supabase.auth.stopAutoRefresh();
+  await serviceRole.from('places').delete().eq('id', PENDING_FIXTURE_ID);
 });
 
 describe('places RLS', () => {
-  it('has both fixture rows in the database', async () => {
+  it('has the pending fixture in the database', async () => {
     // Precondition. Without this, "the pending place is invisible" would also
     // pass if the row simply did not exist.
     const { data, error } = await serviceRole
       .from('places')
       .select('id, status')
-      .in('id', [SEEDED_APPROVED_PLACE_ID, SEEDED_PENDING_PLACE_ID]);
+      .eq('id', PENDING_FIXTURE_ID);
 
     expect(error).toBeNull();
-    expect(data).toEqual(
-      expect.arrayContaining([
-        { id: SEEDED_APPROVED_PLACE_ID, status: 'approved' },
-        { id: SEEDED_PENDING_PLACE_ID, status: 'pending' },
-      ])
-    );
+    expect(data).toEqual([{ id: PENDING_FIXTURE_ID, status: 'pending' }]);
   });
 
   it('hides the pending place from anonymous clients', async () => {
@@ -57,7 +73,7 @@ describe('places RLS', () => {
     const { data, error } = await anon
       .from('places')
       .select('id')
-      .eq('id', SEEDED_PENDING_PLACE_ID);
+      .eq('id', PENDING_FIXTURE_ID);
 
     expect(error).toBeNull();
     expect(data).toEqual([]);
@@ -92,18 +108,16 @@ describe('fetchApprovedPlaces', () => {
   it('returns the seeded approved place', async () => {
     const places = await fetchApprovedPlaces();
 
-    const seeded = places.find((place) => place.id === SEEDED_APPROVED_PLACE_ID);
-    expect(seeded).toBeDefined();
-    expect(seeded).toMatchObject({
-      name: 'St. George Romanian Orthodox Cathedral',
-      category: 'historic',
-      address: '18405 W Nine Mile Rd, Southfield, MI 48075',
+    expect(places.find((place) => place.id === SEEDED_APPROVED_PLACE_ID)).toMatchObject({
+      name: SEEDED_APPROVED_PLACE.name,
+      category: SEEDED_APPROVED_PLACE.category,
+      address: SEEDED_APPROVED_PLACE.address,
     });
   });
 
   it('returns no pending places', async () => {
     const places = await fetchApprovedPlaces();
 
-    expect(places.map((place) => place.id)).not.toContain(SEEDED_PENDING_PLACE_ID);
+    expect(places.map((place) => place.id)).not.toContain(PENDING_FIXTURE_ID);
   });
 });

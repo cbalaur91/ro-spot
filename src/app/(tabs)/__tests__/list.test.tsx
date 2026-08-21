@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
+import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
 import i18n from '@/i18n';
 
 import ListScreen from '../list';
@@ -14,21 +15,7 @@ const { fetchApprovedPlaces } = jest.requireMock('@/data/places') as {
   fetchApprovedPlaces: jest.Mock;
 };
 
-const seededPlace = {
-  id: '00000000-0000-4000-8000-000000000001',
-  name: 'St. George Romanian Orthodox Cathedral',
-  category: 'historic',
-  description: 'Romanian Orthodox cathedral serving the Metro Detroit community.',
-  address: '18405 W Nine Mile Rd, Southfield, MI 48075',
-  lat: 42.4576,
-  lng: -83.2409,
-  status: 'approved',
-  author_id: null,
-  phone: null,
-  website: null,
-  social_url: null,
-  created_at: '2026-08-21T00:00:00Z',
-};
+const seededPlace = { ...SEEDED_APPROVED_PLACE, created_at: '2026-08-21T00:00:00Z' };
 
 // `render` is async in @testing-library/react-native 14.
 async function renderScreen(ui: ReactElement) {

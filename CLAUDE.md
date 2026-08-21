@@ -7,13 +7,20 @@ Community map of Romanian places in the US. Expo (React Native) mobile app for i
 ```sh
 bun install              # dependencies (use `npx expo install <pkg>` for anything Expo resolves)
 bun run typecheck        # tsc --noEmit
+bun run lint             # eslint .
 npm test                 # Jest — see the note below, `bun run test` does not work
 bun run android          # dev server for a connected device
 npx expo export --platform android   # bundles for Android; the closest thing to a boot check without a device
 ```
 
 **Tests run under `npm`, not `bun`.** `bun run` puts a `node` shim on PATH that is Bun
-itself, and Jest cannot run on Bun's runtime.
+itself, and Jest cannot run on Bun's runtime. On this machine Bun is a snap, so its
+confinement also hides the real Node — installing Bun natively (`curl -fsSL
+https://bun.sh/install | bash`) would not fix Jest-on-Bun, but it would let a wrapper
+find Node. Until then, `npm test`.
+
+`npm test` runs the RLS integration suite only when `.env` has Supabase credentials;
+without them `jest.config.js` drops that file and warns. Everything else still runs.
 
 Supabase migrations go through the CLI with `SUPABASE_ACCESS_TOKEN` from `.env`:
 `supabase db push --linked`, then regenerate types into `src/data/database.types.ts`

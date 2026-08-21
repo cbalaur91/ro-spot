@@ -33,19 +33,16 @@ export default function ListScreen() {
     queryFn: fetchApprovedPlaces,
   });
 
-  return (
-    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      {places.isPending ? (
-        <>
-          <Header />
+  if (places.isPending || places.isError) {
+    return (
+      <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+        <Header />
+        {places.isPending ? (
           <Centered>
             <ActivityIndicator color={colors.cherry} />
             <Text className="text-[13px] text-muted">{t('list.loading')}</Text>
           </Centered>
-        </>
-      ) : places.isError ? (
-        <>
-          <Header />
+        ) : (
           <Centered>
             <Ionicons name="cloud-offline-outline" size={28} color={colors.muted} />
             <Text className="text-center text-[15px] text-ink">{t('list.error')}</Text>
@@ -59,23 +56,27 @@ export default function ListScreen() {
               </Text>
             </Pressable>
           </Centered>
-        </>
-      ) : (
-        <FlatList
-          data={places.data}
-          keyExtractor={(place) => place.id}
-          ListHeaderComponent={Header}
-          renderItem={({ item }) => <PlaceRow place={item} />}
-          ListEmptyComponent={
-            <Centered>
-              <Text className="text-[15px] text-ink">{t('list.empty')}</Text>
-              <Text className="text-[13px] text-muted">{t('list.emptyHint')}</Text>
-            </Centered>
-          }
-          refreshing={places.isRefetching}
-          onRefresh={places.refetch}
-        />
-      )}
+        )}
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
+      <FlatList
+        data={places.data}
+        keyExtractor={(place) => place.id}
+        ListHeaderComponent={Header}
+        renderItem={({ item }) => <PlaceRow place={item} />}
+        ListEmptyComponent={
+          <Centered>
+            <Text className="text-[15px] text-ink">{t('list.empty')}</Text>
+            <Text className="text-[13px] text-muted">{t('list.emptyHint')}</Text>
+          </Centered>
+        }
+        refreshing={places.isRefetching}
+        onRefresh={places.refetch}
+      />
     </SafeAreaView>
   );
 }
