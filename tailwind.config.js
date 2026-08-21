@@ -2,6 +2,11 @@
 module.exports = {
   content: ['./src/**/*.{js,jsx,ts,tsx}'],
   presets: [require('nativewind/preset')],
+  // NativeWind's web runtime refuses to set a colour scheme while this is
+  // Tailwind's default 'media', and throws on load. The app is light-only
+  // anyway (`userInterfaceStyle: "light"`), so nothing ever adds the `dark`
+  // class and no dark variant activates.
+  darkMode: 'class',
   theme: {
     extend: {
       // Mirrors src/theme.ts — see the note there.
