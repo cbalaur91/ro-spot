@@ -9,7 +9,8 @@ bun install              # dependencies (use `npx expo install <pkg>` for anythi
 bun run typecheck        # tsc --noEmit
 bun run lint             # eslint .
 npm test                 # Jest — see the note below, `bun run test` does not work
-bun run android          # dev server for a connected device
+bun run start            # dev server; open in Expo Go
+bun run web              # browser preview — the fastest loop on WSL2, where there's no emulator
 npx expo export --platform android   # bundles for Android; the closest thing to a boot check without a device
 ```
 
@@ -21,6 +22,9 @@ find Node. Until then, `npm test`.
 
 `npm test` runs the RLS integration suite only when `.env` has Supabase credentials;
 without them `jest.config.js` drops that file and warns. Everything else still runs.
+
+Web is a **dev convenience, not a release target** — v1 ships iOS + Android. Expect the
+Map tab to be Android/iOS-only once `react-native-maps` lands.
 
 Supabase migrations go through the CLI with `SUPABASE_ACCESS_TOKEN` from `.env`:
 `supabase db push --linked`, then regenerate types into `src/data/database.types.ts`
