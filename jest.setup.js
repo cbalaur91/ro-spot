@@ -24,3 +24,11 @@ Object.assign(global, {
 jest.mock('@react-native-async-storage/async-storage', () =>
   require('@react-native-async-storage/async-storage/jest/async-storage-mock')
 );
+
+// react-query batches observer notifications onto a macrotask, so one can land
+// after the test that scheduled it has finished and React warns about a state
+// update outside `act()`. Notifying synchronously keeps every update inside the
+// `act()` that caused it, which makes the warning deterministic-by-absence
+// rather than intermittent.
+const { notifyManager } = require('@tanstack/react-query');
+notifyManager.setScheduler((callback) => callback());

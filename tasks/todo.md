@@ -50,6 +50,39 @@ device screenshot.
 - [x] H. Code review (standards + spec axes) and fixes → verified: `bun run lint` clean after adding the gate; fixture moved out of schema history; RLS suite skips cleanly on a credential-less clone
 - [x] I. Push to GitHub → verified: `git ls-remote --heads origin` shows `main`
 
+## Issue #3 — Map browse: pins, category chips, distance-sorted list
+
+Covers Phase 2 steps 7 and 8. Same environment constraints as issue #2 (no emulator,
+no Docker): Android is proven by a bundle export plus component tests, not a device.
+
+- [x] A. `src/geo.ts` — haversine `distanceMiles`, `formatMiles`, `sortByDistance`, and the
+      Metro Detroit fallback origin, TDD → verified: 10 unit tests, including Southfield↔Cleveland
+      at 103.4 mi cross-checked against an independent haversine rather than against the code
+- [x] B. `useOrigin()` — ask for foreground location, fall back to Metro Detroit on denial
+      or error, never block → verified: 4 tests covering granted / denied / no-fix / prompt-still-open
+- [x] C. Category filter context in `(tabs)/_layout.tsx` so Map and List read one state
+      → verified: pressing a chip on the List tab filters, and the Map tab reads the same context
+- [x] D. `useVisiblePlaces()` — one query, filtered by the chips and sorted by distance,
+      consumed by both tabs → verified: 7 tests; distance order is asserted against an
+      input deliberately returned farthest-first, so a name sort can't pass it
+- [x] E. Map tab: `react-native-maps` with `PROVIDER_DEFAULT`, pins tinted by category,
+      chips overlaid → verified: 8 tests with the native module mocked (one marker per
+      visible place, provider, anchor, filtering); `npx expo export --platform android`
+      produces a 5.1MB Hermes bundle containing `AIRMap`
+- [x] F. Web fallback for the Map tab → verified: `npx expo export --platform web` compiles
+      and the web bundle contains the fallback copy and **zero** references to
+      `react-native-maps`, so the browser loop on WSL2 still works
+- [x] G. List tab: chips + distance per row → verified: 10 tests — nearest-first order,
+      `0.6 mi` / `109 mi` labels, the fallback-origin note appearing only when location was
+      refused, and an over-filtered list distinguished from a genuinely empty one
+- [x] H. Google Maps Android API key wired through `app.config.ts` from env → verified:
+      `npx expo-doctor` 21/21, both exports succeed. **The key itself is still owed by the
+      owner** — Android tiles render blank without it (see the deviations below)
+- [x] I. Code review (standards + spec) and fixes → verified: 50 tests green, typecheck
+      and lint clean, both bundles export (see the review below for what the two axes found)
+
+---
+
 ## Review
 
 ### Issue #2 — walking skeleton (2026-08-21)
@@ -96,3 +129,82 @@ Follow-ups worth an issue:
 - `jest` prints "a worker process has failed to exit gracefully" from the jest-expo
   preset. Exit code is 0 and `--detectOpenHandles` reports nothing; cosmetic.
 - `bun run test` still can't work while Bun is installed as a snap (see CLAUDE.md).
+
+### Issue #3 — map browse (2026-08-21)
+
+Shipped: a `react-native-maps` Map tab with a pin per approved place, category chips
+shared by the Map and List tabs, and a List ordered by real distance from the user with
+a Metro Detroit fallback when location is refused. 50 tests green (was 45), typecheck and
+lint clean, `npx expo-doctor` 21/21, both the Android and web bundles export.
+
+**Design.** The chips, the pins and the list rows all reuse the existing Brâncuși
+rhomboid rather than introducing a second visual vocabulary: a chip is a rhomboid plus
+its label (hollow when off, solid when on), and a pin is one segment of the list's left
+gutter stood on end — the rhomboid on a hairline stem, anchored where the stem meets the
+ground. Distance sits on the row's top line opposite the category eyebrow, in the muted
+register with tabular figures, because distance is data and not category information.
+
+**Seams.** `src/geo.ts` is pure and knows nothing of `expo-location`; `useOrigin()` owns
+the permission prompt; `useVisiblePlaces()` is the single hook both tabs render from, so
+they can't disagree about what is visible. The category selection lives in a context
+mounted in `(tabs)/_layout.tsx` because neither screen owns it.
+
+Deviations and things still owed:
+- **The Android Google Maps API key is not set.** `app.json` became `app.config.ts` so
+  the key comes from `GOOGLE_MAPS_ANDROID_API_KEY` in `.env` rather than the repo. Until
+  the owner supplies one, Android renders the pins over blank tiles. iOS uses Apple Maps
+  and needs no key. This is the one acceptance criterion that cannot be closed here.
+- **Not verified on a device**, same constraint as issue #2: the Android proof is a
+  successful bundle export whose Hermes output contains `AIRMap`, plus component tests
+  against a mocked native module.
+- **Locale-aware number formatting is unverified on Hermes.** `units.miles` uses
+  i18next's `{{value, number}}` formatter, which needs `Intl.NumberFormat`. Node has it,
+  so the "0,6 mi" Romanian test passes; Hermes ships Intl on both platforms, but that is
+  read from the docs, not seen running here.
+
+Changed after the two-axis code review (both axes found real defects, not just taste):
+- **The Map's empty state was lying.** It said "No places match these filters" whenever
+  it had nothing to draw, including on a first run with an empty dataset — and the test
+  written for it mocked an empty result with no chip pressed, so it certified the wrong
+  branch. The Map now distinguishes the two cases as the List already did, and two tests
+  pin both branches.
+- **`refetch` was passed straight to `onPress`/`onRefresh`**, which hand their callback an
+  argument react-query would read as `RefetchOptions`. Fixed at the seam — the hook now
+  returns a wrapper that swallows its caller's argument, so no screen can get it wrong.
+- **`formatMiles` held UI copy and a hard `.` decimal separator**, against the rule that
+  all UI copy lives in `src/i18n/`. It is now `milesLabel`, which decides only precision;
+  the words and the digit grouping come from the locale, so Romanian reads `0,6 mi`.
+- **Every distance was computed twice** — once inside the sort comparator, once again to
+  display. `nearestFirst` now measures once and sorts on the measurement, so the number a
+  row shows is provably the number it was ordered on.
+- `useOrigin`'s `isResolved` was set but never read. It has a real consumer now: the
+  List's "distances are from downtown Detroit" note would otherwise flash before the
+  permission prompt was answered, claiming something we didn't yet know.
+- `geo.Region` was documented as "the shape react-native-maps wants" while the map had to
+  unpack all four fields. It is that shape now, and `nearbyRegion()` builds the closer
+  view the map animates to.
+- One shared `filters.noMatch` string replaces the byte-identical `map.empty` /
+  `list.filteredEmpty` pair; the chips dropped a wrong `tablist` role over button
+  children; the tests import `DEFAULT_ORIGIN` instead of re-typing its coordinates.
+- Fixed the root cause of an intermittent `act()` warning: react-query batches observer
+  notifications onto a macrotask that can land after the test that scheduled it, so
+  `jest.setup.js` now makes it notify synchronously. Four consecutive clean runs.
+
+Reviewed and deliberately kept:
+- **The web fallback for the Map tab** was flagged as scope the issue didn't ask for. Kept:
+  `react-native-maps` has nothing to draw in a browser, and CLAUDE.md names the browser as
+  the fastest loop on this machine — without the fallback that loop breaks on the Map tab.
+  The web bundle contains zero references to `react-native-maps`, verified by grep.
+- **Per-row distance labels** were flagged likewise. Kept: an order the user can't see the
+  basis for reads as arbitrary.
+- **Chips are pinned on the Map and scroll with the header on the List.** "Consistently"
+  in the acceptance criterion is about what the chips filter, not where they sit, and a
+  list header that scrolls is ordinary list behaviour.
+
+Follow-ups worth an issue:
+- `map.error` ("Places could not be loaded.") and `list.error` ("Something went wrong
+  loading places.") say the same thing two ways, and `map.retry`/`list.retry` are the same
+  word twice. Fold them together in the i18n completeness pass (#13).
+- Adding a category still needs edits in `theme.ts`, both locale files and `CATEGORIES`.
+- The Map tab has no loading indicator — a map with no pins yet is still a map, but if the
+  cold query turns out to be slow on a real device this is where to look.

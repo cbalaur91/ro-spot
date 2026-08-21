@@ -2,6 +2,7 @@ import type { Database } from './database.types';
 import { supabase } from './supabase';
 
 export type Place = Database['public']['Tables']['places']['Row'];
+export type PlaceCategory = Database['public']['Enums']['place_category'];
 
 /**
  * Every place the public is allowed to see.
