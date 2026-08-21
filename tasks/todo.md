@@ -3,13 +3,13 @@
 Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being checked off.
 
 ## Phase 0 — Foundation
-- [ ] 1. Initial commit + push (CLAUDE.md, docs, .gitignore) → verify: `git push` succeeds, repo visible on GitHub
-- [ ] 2. Scaffold Expo app (bun, TS strict, Expo Router tabs: Map/List/Add/Profile) → verify: `bun run typecheck` passes, app boots in Android emulator/Expo Go
-- [ ] 3. Add NativeWind, TanStack Query, supabase-js, expo-image, i18next scaffolding → verify: typecheck passes, one translated string renders in RO and EN
+- [x] 1. Initial commit + push (CLAUDE.md, docs, .gitignore) → verified: `main` pushed, repo live on GitHub
+- [x] 2. Scaffold Expo app (bun, TS strict, Expo Router tabs: Map/List/Add/Profile) → verified: `bun run typecheck` clean; app runs in the browser (owner confirmed the List tab). **Android device check still owed** — see issue #2's close note
+- [x] 3. Add NativeWind, TanStack Query, supabase-js, i18next scaffolding → verified: typecheck clean; List tab test asserts the same screen in RO and EN. `expo-image` deferred to the photos slice, which is the first consumer
 
 ## Phase 1 — Backend
-- [ ] 4. Supabase migrations: `places` (+ status enum, category enum), `reports`, `profiles`; storage bucket for photos → verify: `supabase db push` applies cleanly; tables visible in dashboard
-- [ ] 5. RLS policies: anon select approved; auth insert pending; author update own → re-pending; reports insert → verify: anon-key query returns only approved rows; write tests against pending rows fail
+- [ ] 4. Supabase migrations: `places` ✅ (+ both enums); `reports`, `profiles`, storage bucket still to do → verify: `supabase db push` applies cleanly; tables visible in dashboard
+- [ ] 5. RLS policies: anon select approved ✅; auth insert pending, author update own → re-pending, reports insert still to do → verify: anon-key query returns only approved rows; write tests against pending rows fail
 - [ ] 6. Account-deletion edge function → verify: invoking it removes the auth user + owned data
 
 ## Phase 2 — Browse (no auth)
@@ -66,9 +66,11 @@ Deviations from the issue, agreed before starting:
 - **RLS proven against the remote `rospot` project, not a local stack** — no Docker in
   WSL2. The suite reads with the anon key and with the service role key; the delta
   between them *is* the policy. Cost: two fixture rows live in the production table.
-- **"Boots on Android" proven by bundle export, not a device** — no adb/emulator here.
-  `npx expo export --platform android` compiles every route; the List tab's behaviour is
-  covered by component tests. A real device check is still owed.
+- **"Boots on Android" proven by bundle export plus a browser run, not a device** — no
+  adb/emulator here. `npx expo export --platform android` compiles every route, and the
+  owner confirmed the List tab renders St. George in the browser on 2026-08-21, which
+  exercises the whole slice end to end (router → data module → RLS → screen). The
+  Android-specific check is still owed and the issue was closed knowing that.
 
 Not built (deliberately out of this slice): `reports` and `profiles` tables, the photos
 column and storage bucket, insert/update policies (RLS denies all writes until the
