@@ -14,7 +14,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '../database.types';
 import { SEEDED_APPROVED_PLACE, SEEDED_APPROVED_PLACE_ID } from '../fixtures';
-import { fetchApprovedPlaces } from '../places';
+import { fetchApprovedPlaces, fetchPlace } from '../places';
 import { supabase } from '../supabase';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -119,5 +119,32 @@ describe('fetchApprovedPlaces', () => {
     const places = await fetchApprovedPlaces();
 
     expect(places.map((place) => place.id)).not.toContain(PENDING_FIXTURE_ID);
+  });
+});
+
+describe('fetchPlace', () => {
+  it('returns the seeded approved place, photo paths and all', async () => {
+    const place = await fetchPlace(SEEDED_APPROVED_PLACE_ID);
+
+    expect(place).toMatchObject({
+      name: SEEDED_APPROVED_PLACE.name,
+      photo_paths: SEEDED_APPROVED_PLACE.photo_paths,
+    });
+  });
+
+  it('will not open a pending place by id', async () => {
+    // The one that matters: a place is `pending` precisely because nobody has
+    // approved it, and a direct link must not be a way around that.
+    expect(await fetchPlace(PENDING_FIXTURE_ID)).toBeNull();
+  });
+
+  it('answers "no such place" for an id nothing was ever written under', async () => {
+    expect(await fetchPlace('00000000-0000-4000-8000-00000000dead')).toBeNull();
+  });
+
+  it('answers "no such place" for an id that is not a UUID at all', async () => {
+    // Postgres rejects this one rather than returning no rows, and a stale link
+    // should still read as a missing place rather than an error screen.
+    expect(await fetchPlace('not-a-uuid')).toBeNull();
   });
 });

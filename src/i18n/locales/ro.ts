@@ -16,6 +16,10 @@ export default {
     miles: '{{value, number}} mi',
     milesBelow: '< {{value, number}} mi',
   },
+  actions: {
+    retry: 'Încearcă din nou',
+    back: 'Înapoi',
+  },
   filters: {
     label: 'Filtrează după categorie',
     noMatch: 'Niciun loc nu se potrivește cu filtrele.',
@@ -23,7 +27,6 @@ export default {
   map: {
     empty: 'Niciun loc pe hartă deocamdată.',
     error: 'Locurile nu au putut fi încărcate.',
-    retry: 'Încearcă din nou',
     webUnsupported: 'Harta are nevoie de aplicația de iOS sau Android.',
     webUnsupportedHint: 'Aceleași locuri sunt în fila Listă.',
   },
@@ -34,7 +37,18 @@ export default {
     empty: 'Niciun loc deocamdată.',
     emptyHint: 'Locurile aprobate apar aici.',
     error: 'Locurile nu au putut fi încărcate.',
-    retry: 'Încearcă din nou',
+  },
+  detail: {
+    photo: 'Fotografia {{index}} din {{total}}',
+    noPhotos: 'Încă nu există fotografii ale acestui loc.',
+    call: 'Sună',
+    website: 'Site web',
+    social: 'Rețele sociale',
+    linkFailed: 'Acest dispozitiv nu are cu ce să deschidă linkul.',
+    loading: 'Se încarcă locul',
+    error: 'Locul nu a putut fi încărcat.',
+    notFound: 'Locul acesta nu este aici.',
+    notFoundHint: 'Poate a fost șters sau poate încă așteaptă aprobarea.',
   },
   comingSoon: {
     add: 'Adăugarea unui loc vine odată cu autentificarea.',

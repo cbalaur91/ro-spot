@@ -42,6 +42,7 @@ const config: ExpoConfig = {
     'expo-router',
     'expo-localization',
     'expo-font',
+    'expo-image',
     [
       'expo-location',
       {

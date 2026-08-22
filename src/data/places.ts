@@ -24,3 +24,45 @@ export async function fetchApprovedPlaces(): Promise<Place[]> {
 
   return data ?? [];
 }
+
+/** Postgres' "invalid input syntax for type uuid". */
+const INVALID_TEXT_REPRESENTATION = '22P02';
+
+/**
+ * One place by id, or `null` if there isn't one the public may see.
+ *
+ * The `status` filter is not redundant with RLS here, it is the same answer
+ * arrived at twice: a deep link to a place that is pending or rejected has to
+ * read as "no such place" even if the policy were ever widened.
+ */
+export async function fetchPlace(id: string): Promise<Place | null> {
+  const { data, error } = await supabase
+    .from('places')
+    .select('*')
+    .eq('id', id)
+    .eq('status', 'approved')
+    .maybeSingle();
+
+  if (error) {
+    // An id that isn't a UUID can only come from a hand-typed or stale link, and
+    // "that place isn't here" is a truer answer than an error screen.
+    if (error.code === INVALID_TEXT_REPRESENTATION) return null;
+    throw new Error(`Failed to load place: ${error.message}`);
+  }
+
+  return data;
+}
+
+/** The storage bucket the entries in `photo_paths` are relative to. */
+export const PHOTO_BUCKET = 'place-photos';
+
+/**
+ * A displayable URL for one entry of `photo_paths`.
+ *
+ * The rows store bucket-relative paths, not URLs, so the bucket can change
+ * hands — or start serving signed URLs — without a migration. Building the URL
+ * is string work with no round trip, so this stays synchronous.
+ */
+export function placePhotoUrl(path: string): string {
+  return supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;
+}

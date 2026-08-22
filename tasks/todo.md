@@ -81,6 +81,46 @@ no Docker): Android is proven by a bundle export plus component tests, not a dev
 - [x] I. Code review (standards + spec) and fixes → verified: 50 tests green, typecheck
       and lint clean, both bundles export (see the review below for what the two axes found)
 
+
+## Issue #4 — Place detail with photos
+
+Covers Phase 2 step 9's screen half (the "Report a problem" button belongs to issue #9).
+Same environment constraints as #2/#3: no emulator, no Docker — Android is proven by a
+bundle export plus component tests.
+
+Decisions taken with the owner before starting: photos are a `photo_paths text[]` column
+on `places` (not a `place_photos` table), and the seeded cathedral gets a generated
+RoSpot placeholder image until issue #11 supplies the owner's real photos.
+
+- [x] A. `src/links.ts` — `telUrl` / `webUrl`, pure and TDD'd → verified: 7 unit tests,
+      including that a non-web scheme in a website field is refused rather than prefixed
+- [x] B. Migration: `photo_paths text[]` on `places` (≤5, no null entries) + `place-photos`
+      bucket, public read, JPEG only → verified: `supabase db push --linked` applied;
+      the bucket API reports `"public":true`
+- [x] C. Regenerated `src/data/database.types.ts` → verified: `bun run typecheck` clean
+- [x] D. Generated placeholder photos, uploaded to `seed/`, migration writes their paths
+      → verified: the public URL returns `200 image/jpeg` with no credentials, and an
+      anon REST read returns both paths on the seeded row
+- [x] E. `fetchPlace(id)` + `placePhotoUrl(path)`; storage integration suite → verified:
+      13 integration assertions — a pending place is not reachable by id, a non-UUID id
+      reads as missing rather than as an error, every advertised path has an object
+      behind it, and anonymous uploads are refused
+- [x] F. `usePlace(id)`, seeded from the browse cache → verified: 5 tests, two of them
+      against a fetch that never resolves so what is drawn can only have come from cache
+- [x] G. Detail screen + `PhotoGallery` (`expo-image`) → verified: 12 tests covering
+      every spec field, the no-photo state, absent and unusable links, the dialer and
+      browser hand-offs, not-found, and retry
+- [x] H. Navigation in from the List row and the map callout → verified: both assert the
+      pathname and the id, and the map test asserts the bare pin has no `onPress`
+- [x] I. RO + EN for everything new; the duplicate `map.retry` / `list.retry` pair
+      collapsed into `actions.retry` → verified: the detail suite runs in both locales
+- [x] J. Gates → verified: `bun run typecheck` clean, `bun run lint` clean, `npm test`
+      83 green, Android bundle (5.1MB) contains the new screen, web bundle still holds
+      zero references to `react-native-maps`. Also rendered in a headless browser
+      against the live bucket — the photo loads, the gallery pages, the links render
+- [x] K. `/code-review` (standards + spec), fixed what it found, committed → verified:
+      84 tests green, typecheck and lint clean, both bundles export, expo-doctor 21/21
+
 ---
 
 ## Review
@@ -208,3 +248,75 @@ Follow-ups worth an issue:
 - Adding a category still needs edits in `theme.ts`, both locale files and `CATEGORIES`.
 - The Map tab has no loading indicator — a map with no pins yet is still a map, but if the
   cold query turns out to be slow on a real device this is where to look.
+
+### Issue #4 — place detail with photos (2026-08-21)
+
+Shipped: a `place-photos` bucket with public read, a `photo_paths` column on `places`, and
+a detail screen reached from a list row or a map callout — photo gallery, category, name,
+address, description, and phone / website / social links that open the dialer or the
+browser. 84 tests green (was 50), typecheck and lint clean, `npx expo-doctor` 21/21, both
+the Android and web bundles export.
+
+**Design.** The screen is the list row you tapped, unfolded. The column from the list's
+left gutter runs down it as a spine, with one rung per thing there is to know about the
+place: the first rung solid in the category colour, as the row was, then a hollow notch per
+contact link. The photographs are the one thing allowed past the margin — a photo starts at
+the 36px gutter and bleeds off the right edge, so the gallery reads as a deck to push
+through. No horizontal rules: the column already divides, and adding hairlines too would
+have said the same thing twice.
+
+**Seams.** `src/links.ts` is where "what a person typed in a form" becomes "a URL we are
+willing to open", and it is pure. `fetchPlace` / `placePhotoUrl` keep the whole photo story
+inside `src/data/`; the screen never learns which bucket the photos are in. `usePlace`
+seeds itself from the browse query's cache, so arriving from a row draws immediately.
+
+**Photos in the bucket.** The two objects behind the seeded cathedral are generated RoSpot
+placeholders, agreed with the owner, and issue #11 replaces them with real photographs.
+They are versioned at `assets/seed-photos/` and uploaded by `scripts/upload-seed-photos.sh`
+— a migration can write a path but not an object, so the seed is only whole with both.
+
+Verified beyond the tests: the screen was rendered in a headless browser against the live
+project, and the photo it drew came out of the real bucket over a URL carrying no
+credentials. Still owed, same as #2 and #3: nothing here has run on an Android device.
+
+Changed after the two-axis code review (both axes found real defects):
+- **`webUrl` would hand the OS a URL that could only fail.** A website field is a text box,
+  so `coming soon` arrives in it — and it became `https://coming soon`. A scheme-less
+  string now has to look like a domain, and `telUrl` needs seven digits, so "open 7 days"
+  no longer offers to dial `7`.
+- **The seeded photos existed only because they had been uploaded by hand.** Rebuilding
+  from `supabase/migrations/` left the gallery pointing at objects that were never
+  created. The JPEGs are in the repo now, with a script that puts them in the bucket.
+- **The bucket migration said `on conflict do nothing`**, so a `place-photos` bucket that
+  already existed and was private would have stayed private — the one property the issue
+  asks for. It is `do update` now. The migration was edited in place rather than followed
+  by a corrective one: it has only ever been applied to a single database, which is already
+  in the state the corrected SQL produces (`db push --dry-run` reports nothing pending).
+- **The load and error states were duplicated** between the List and the detail screen, and
+  the column motif was duplicated between `PlaceRow` and the detail screen's rungs. Both
+  are one component now (`ScreenState`, `Column`) — the two screens fail for the same
+  reason and should not look like two different problems, and the column is the app's one
+  structural motif.
+- **`GUTTER` was declared but nothing followed it** — every inset was a literal `pl-9`.
+  It now sets the padding the gallery's width is derived from, so the two cannot disagree.
+
+Reviewed and deliberately kept:
+- **Collapsing `map.retry` / `list.retry` into `actions.retry`** is work the #3 review
+  deferred to the i18n pass (#13). The detail screen needed a retry string, and adding a
+  third copy of "Try again" to avoid touching #13's scope would have been worse. Noted on
+  #13.
+- **A map pin takes two taps to open a place** — the pin shows its callout, the callout
+  opens the screen. Pins are small and mis-taps are cheap to make; the callout is the tap
+  that means it. Flagged for the owner rather than changed.
+- **The `denies anonymous uploads` assertion** tests a write path this issue scoped out.
+  Kept: public read is not public write, and that is worth a standing guard.
+- **The seed paths appear in both the migration and `src/data/fixtures.ts`** and can't be
+  shared across SQL and TypeScript. The drift is caught rather than prevented: the RLS
+  suite asserts the live row's `photo_paths` equals the fixture's, and the storage suite
+  asserts every path in the fixture has an object behind it.
+
+Follow-ups worth an issue:
+- The 1-photo floor from the spec ("photos, required, 1–5") is enforced nowhere yet — the
+  check constraint only caps at five. It belongs to the submission form; noted on #7.
+- `.expo/types/router.d.ts` lists the `__tests__` files as routes. They are not in the
+  exported bundle (checked by grep), so this is cosmetic, but the type surface is wrong.

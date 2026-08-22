@@ -11,6 +11,11 @@ import MapScreen from '../index';
 jest.mock('@/data/places', () => ({ fetchApprovedPlaces: jest.fn() }));
 jest.mock('@/hooks/useOrigin', () => ({ useOrigin: jest.fn() }));
 
+// `mock`-prefixed so Jest lets the factory close over it.
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
+
+const mockPush = jest.fn();
+
 // `react-native-maps` is a native module with nothing to render under Jest.
 // The stand-in keeps the props the screen actually depends on observable.
 jest.mock('react-native-maps', () => {
@@ -113,6 +118,23 @@ describe('Map tab', () => {
       'Bakery',
       'Cathedral',
     ]);
+  });
+
+  it('opens a place from its callout, not from the bare pin', async () => {
+    await renderScreen(<MapScreen />);
+
+    const markers = await screen.findAllByTestId('marker');
+    // By title, not by position: the pins come out nearest-first.
+    const marker = markers.find((pin) => pin.props.title === cathedral.name)!;
+    // Tapping a pin should say which place it is before it goes anywhere; the
+    // callout is the tap that means it.
+    expect(marker.props.onPress).toBeUndefined();
+    marker.props.onCalloutPress();
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/place/[id]',
+      params: { id: cathedral.id },
+    });
   });
 
   it('drops the pins the chips filter out', async () => {

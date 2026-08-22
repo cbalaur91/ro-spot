@@ -1,26 +1,10 @@
 import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 
+import { ColumnSegment } from '@/components/Column';
 import { milesLabel } from '@/geo';
 import type { PlaceWithDistance } from '@/hooks/useVisiblePlaces';
 import { categoryColor } from '@/theme';
-
-/**
- * One rung of the column running down the left gutter — a hairline with a
- * rhomboid at each row, after Brâncuși's Coloana Infinitului. It does the work a
- * row divider normally would, and its colour states the category twice over.
- */
-function ColumnSegment({ tint }: { tint: string }) {
-  return (
-    <View className="w-9 items-center">
-      <View className="absolute bottom-0 top-0 w-px bg-line" />
-      <View
-        className="mt-[26px] h-2.5 w-2.5 rotate-45"
-        style={{ backgroundColor: tint }}
-      />
-    </View>
-  );
-}
 
 export function PlaceRow({ place }: { place: PlaceWithDistance }) {
   const { t } = useTranslation();
@@ -28,8 +12,11 @@ export function PlaceRow({ place }: { place: PlaceWithDistance }) {
   const distance = milesLabel(place.miles);
 
   return (
-    <View className="flex-row" accessibilityRole="summary">
-      <ColumnSegment tint={tint} />
+    <View className="flex-row">
+      {/* The segment does the work a row divider normally would, and its
+          colour states the category twice over. 26px clears this row's `py-5`
+          and lands the rhomboid on the eyebrow. */}
+      <ColumnSegment tint={tint} offset={26} />
       <View className="flex-1 py-5 pr-5">
         <View className="flex-row items-baseline justify-between gap-3">
           <Text

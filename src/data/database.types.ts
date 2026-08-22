@@ -26,6 +26,7 @@ export type Database = {
           lng: number
           name: string
           phone: string | null
+          photo_paths: string[]
           social_url: string | null
           status: Database["public"]["Enums"]["place_status"]
           website: string | null
@@ -41,6 +42,7 @@ export type Database = {
           lng: number
           name: string
           phone?: string | null
+          photo_paths?: string[]
           social_url?: string | null
           status?: Database["public"]["Enums"]["place_status"]
           website?: string | null
@@ -56,6 +58,7 @@ export type Database = {
           lng?: number
           name?: string
           phone?: string | null
+          photo_paths?: string[]
           social_url?: string | null
           status?: Database["public"]["Enums"]["place_status"]
           website?: string | null

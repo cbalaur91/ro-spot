@@ -12,6 +12,11 @@ import ListScreen from '../list';
 jest.mock('@/data/places', () => ({ fetchApprovedPlaces: jest.fn() }));
 jest.mock('@/hooks/useOrigin', () => ({ useOrigin: jest.fn() }));
 
+// `mock`-prefixed so Jest lets the factory close over it.
+jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
+
+const mockPush = jest.fn();
+
 const { fetchApprovedPlaces } = jest.requireMock('@/data/places') as {
   fetchApprovedPlaces: jest.Mock;
 };
@@ -200,6 +205,20 @@ describe('List tab', () => {
 
     expect(await screen.findByText('No places yet.')).toBeTruthy();
     expect(screen.getByText('Approved places show up here.')).toBeTruthy();
+  });
+
+  it('opens a place when its row is tapped', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery]);
+
+    await renderScreen(<ListScreen />);
+    await userEvent.press(await screen.findByText(bakery.name));
+
+    // The id, not the index: the list is sorted by distance, so the row's
+    // position is not a stable name for the place it shows.
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/place/[id]',
+      params: { id: bakery.id },
+    });
   });
 
   it('offers a retry when loading fails', async () => {

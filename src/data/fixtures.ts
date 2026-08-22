@@ -20,4 +20,7 @@ export const SEEDED_APPROVED_PLACE = {
   phone: null,
   website: null,
   social_url: null,
+  // Written by `20260821000300_seed_walking_skeleton_photos.sql`. Generated
+  // placeholders, not photographs — see that migration.
+  photo_paths: ['seed/st-george-1.jpg', 'seed/st-george-2.jpg'] as string[],
 } as const;

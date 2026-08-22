@@ -46,7 +46,7 @@ export default function MapScreen() {
               className="active:opacity-70"
             >
               <Text className="text-[13px] font-semibold text-cherry">
-                {t('map.retry')}
+                {t('actions.retry')}
               </Text>
             </Pressable>
           </View>

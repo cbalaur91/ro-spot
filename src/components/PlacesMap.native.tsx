@@ -1,3 +1,4 @@
+import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
@@ -26,6 +27,7 @@ function Pin({ tint }: { tint: string }) {
 
 export function PlacesMap({ places, origin, isUserLocation }: PlacesMapProps) {
   const map = useRef<MapView>(null);
+  const router = useRouter();
 
   useEffect(() => {
     if (!isUserLocation) return;
@@ -54,6 +56,12 @@ export function PlacesMap({ places, origin, isUserLocation }: PlacesMapProps) {
           anchor={{ x: 0.5, y: 1 }}
           title={place.name}
           description={place.address}
+          // The callout, not the pin: tapping a pin should show you which place
+          // it is before it takes you somewhere, and the callout is the tap that
+          // says you meant it.
+          onCalloutPress={() =>
+            router.push({ pathname: '/place/[id]', params: { id: place.id } })
+          }
           // Left tracking view changes on: switching it off is the usual fix for
           // hundreds of markers, but on Android it can also leave a custom pin
           // blank on first paint, and the launch dataset is 10-20 places.
