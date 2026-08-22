@@ -46,6 +46,24 @@ with `supabase gen types typescript --linked --schema public`.
 - `src/theme.ts` — palette, mirrored in `tailwind.config.js` because navigator options
   take plain values rather than NativeWind classes.
 
+## Design
+
+**Every UI/UX change follows `docs/DESIGN.md`** — the «Ie» design language, binding on this
+repo. Read it before touching a screen or a component: it carries the palette and its roles,
+the motif inventory and the rules for using it, the component recipes (card, pills, chip,
+eyebrow, distance, screen states, measures), per-screen guidance for the six built surfaces
+*and* the four that aren't built yet, and the deliberate divergences from the mock, which
+are not to be "fixed" back.
+
+The design's own source of truth is the Direction B canvas at `assets/RoSpot Motifs.dc.html`
+(turn 2, option `2b`). For a screen that has shipped, `docs/DESIGN.md` wins — it records what
+was built. For one that hasn't, the canvas wins. Building an unbuilt screen means reading
+both. `docs/adr/0001-direction-b-ie-design-language.md` says why the direction was adopted
+and why motifs are drawn rather than bundled.
+
+Nothing outside `src/motifs/` draws a motif. Reach for a recipe in the reference before
+inventing a component, and take colours from the palette rather than from a literal hex.
+
 ## Agent skills
 
 ### Issue tracker

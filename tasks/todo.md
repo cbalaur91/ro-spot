@@ -633,3 +633,80 @@ screen, the same screen with all three contact rows stubbed in, and the not-foun
 - **The star band divider ends mid-stitch at the right.** That is the band's own contract (it
   overdraws a tile and clips) and matches the header's edge-to-edge run, so it is left alone
   rather than special-cased into a centred short band.
+
+## #20 — «Ie» restyle 6/6: make the design binding
+
+Docs only; no code changes. The reference documents what shipped, not what was mocked.
+
+1. [x] `docs/DESIGN.md` — source-of-truth pointer, palette table (token → hex → role, all eight «Ie»
+   tokens), motif inventory + usage rules, component recipes as implemented, per-screen guidance for
+   the six built surfaces and the four unbuilt ones, recorded divergences
+   → verify: every number and hex in it traced back to the file it comes from; the four unbuilt
+   screens traced to the Direction B canvas
+2. [x] `CLAUDE.md` — a short section making the reference binding on UI/UX work, and saying where the
+   motif components live → verify: it points at `docs/DESIGN.md` and the canvas, and doesn't repeat
+   the reference
+3. [x] `docs/adr/0001-…` — Direction B adopted, motifs procedural rather than bundled, the
+   `react-native-svg` consequence → verify: follows `ADR-FORMAT.md` (sequential number, short, only
+   the sections that earn their place)
+4. [x] Gates → verify: `bun run typecheck`, `bun run lint`, `npm test` all green (docs shouldn't move
+   them, and if they do that's the finding)
+5. [x] Read the reference against the live app in the web preview → verify: List, empty List,
+   detail, ComingSoon match what the recipes claim
+
+### Review — #20
+
+`docs/DESIGN.md` (six sections), a `## Design` section in `CLAUDE.md`, and
+`docs/adr/0001-direction-b-ie-design-language.md`. No code changed.
+
+**Verified.** 205 tests green, typecheck and lint clean — the same numbers as before, which is
+what a docs-only ticket should move. Every hex, size and class in the reference was read out of
+the file it comes from rather than out of the canvas: the shipped screens are documented as
+shipped (the detail eyebrow is 11px in the app and 10.5 in the mock; the reference says 11).
+The four unbuilt screens are the canvas's numbers, ported content-box → border-box. Read back
+against the running web preview at 390×844 — List, ComingSoon, Place detail and the Map
+stand-in with its nearest-place card all match what §4 claims.
+
+**Decisions worth knowing:**
+- **The reference outranks the canvas for a shipped screen, and the canvas outranks it for an
+  unshipped one.** Stated in both documents. Without a rule, "the design says X" means whichever
+  of the two the reader happened to open, and the divergences in §5 would read as drift.
+- **§5 records three divergences the ticket didn't list**: the map card is `surface` rather than
+  white, the photo page marks are centred, and the detail keeps its contact rows (the canvas
+  draws none, but they are v1 spec fields). Each was a deliberate call in an earlier slice with
+  nowhere to live until now.
+- **The four unbuilt screens are specified in the app's own units**, not the canvas's CSS —
+  classes and RN values, with the content-box → border-box warning attached to §2 rather than
+  repeated per screen. A specification a builder has to re-derive is a mock with extra steps.
+- **`goldDark`, `badgePending`, `badgeApproved` and `mapShade` are documented as reserved.**
+  They are in the palette and used by nothing today; the reference says which unbuilt screen
+  each is for, so the next reader doesn't delete them as dead.
+- **The ADR corrects a claim rather than repeating one.** `react-native-svg` was not already in
+  the tree — `react-native-maps` declares no such dependency — so the ADR states it as the one
+  dependency the restyle added and names the Jest consequence.
+
+**Review found, and fixed:**
+- **The band table's "Alignment" column conflated two things.** `StarBand` never passes
+  `align` — a short star band is positioned centred by its parent and still tiles from the
+  left. The column is now "Width", and the distinction is spelled out.
+- **The 12px/200px Onboarding band was specified in §4.7 but missing from the §2 inventory**,
+  so a builder reading the inventory would not have found it.
+- **Three numbers were wrong**: the map card's foot inset is 12, not 14; its press dim is
+  `active:opacity-90`, not 80; and the "labelled with the place's name" rule is the map
+  card's — a List row carries no explicit label and reads its own text.
+- **`assets/github.md` doesn't map the eight mocked screens** — its screen map predates the
+  restyle. Described as the sync record it is.
+- **CLAUDE.md's third paragraph restated the Architecture bullet forty lines above it.** Cut
+  to the two rules that were actually new.
+- **The ADR's bespoke H2 is now `## Considered Options`**, which is what it was — bundled
+  rasters, and why they lose.
+
+**Not done, and why:**
+- **The four unbuilt screens stay in the reference** though they duplicate a canvas the
+  document itself calls authoritative for them. #20 asks for them by name and lists what each
+  must carry; a builder shouldn't have to read CSS to build a React Native screen.
+- **The List's true-empty state was not photographed.** It needs a dataset with no approved
+  places; the seeded project has some. Its recipe is read off `EmptyInvitation` and its
+  behaviour is covered by the List suite.
+- **Nothing on a device.** Same as the earlier slices — the pins and the map card still owe an
+  Expo Go pass before #14 closes.
