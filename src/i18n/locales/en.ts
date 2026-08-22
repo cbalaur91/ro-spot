@@ -40,7 +40,10 @@ export default {
     fallbackOrigin: 'Distances are from downtown Detroit. Turn on location to measure from where you are.',
     loading: 'Loading places',
     empty: 'No places yet.',
-    emptyHint: 'Approved places show up here.',
+    // The line names the band stitched above it, so the hora reads as an
+    // invitation rather than as decoration.
+    emptyHint: 'Approved places show up here — the hora needs dancers.',
+    emptyCta: 'Add the first place',
     error: 'Something went wrong loading places.',
   },
   detail: {

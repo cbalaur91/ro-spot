@@ -7,7 +7,7 @@ import { CategoryChips } from '@/components/CategoryChips';
 import { PlaceRow } from '@/components/PlaceRow';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
 import { useVisiblePlaces } from '@/hooks/useVisiblePlaces';
-import { StarBand } from '@/motifs/Band';
+import { HoraBand, StarBand } from '@/motifs/Band';
 import { useCategoryFilter } from '@/state/categoryFilter';
 
 function Header({ showOriginNote }: { showOriginNote: boolean }) {
@@ -34,6 +34,45 @@ function Header({ showOriginNote }: { showOriginNote: boolean }) {
           as a rule instead. */}
       <StarBand height={14} />
       <CategoryChips />
+    </View>
+  );
+}
+
+/**
+ * What the List says when there is genuinely nothing in it: the hora, danced
+ * across the notice, and the ask that follows from it. Only the true empty gets
+ * this — a list emptied by the user's own chips is told so instead, and offering
+ * to add a place there would answer a question nobody asked.
+ *
+ * The block sits at the canvas's own 40px measure rather than the app's 24px
+ * gutter: it is one column of centred text, and centred text set to the full
+ * gutter reads as a paragraph that lost its page.
+ *
+ * The band is stretched rather than dropped straight in — it measures itself,
+ * and a centred column gives its children no width to measure.
+ */
+function EmptyInvitation() {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  return (
+    <View className="flex-1 items-center justify-center px-10 py-16">
+      <View className="self-stretch">
+        <HoraBand />
+      </View>
+      <Text className="mt-[26px] text-[17px] font-semibold text-ink">{t('list.empty')}</Text>
+      <Text className="mt-[7px] text-center text-[13px] leading-[19.5px] text-muted">
+        {t('list.emptyHint')}
+      </Text>
+      {/* Outlined rather than filled: it is the only thing to do on this screen,
+          but it is still an invitation and not the app insisting. */}
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => router.push('/add')}
+        className="mt-6 rounded-full border-[1.5px] border-cherry px-6 py-[11px] active:opacity-70"
+      >
+        <Text className="text-[14px] font-semibold text-cherry">{t('list.emptyCta')}</Text>
+      </Pressable>
     </View>
   );
 }
@@ -79,20 +118,19 @@ export default function ListScreen() {
           </Pressable>
         )}
         ListEmptyComponent={
-          <ScreenNotice>
-            {/* An empty list means two different things, and telling the user
-                which one saves them wondering where their places went. */}
-            {selected.size > 0 ? (
+          // An empty list means two different things, and telling the user which
+          // one saves them wondering where their places went.
+          selected.size > 0 ? (
+            <ScreenNotice>
               <Text className="text-[15px] text-ink">{t('filters.noMatch')}</Text>
-            ) : (
-              <>
-                <Text className="text-[15px] text-ink">{t('list.empty')}</Text>
-                <Text className="text-[13px] text-muted">{t('list.emptyHint')}</Text>
-              </>
-            )}
-          </ScreenNotice>
+            </ScreenNotice>
+          ) : (
+            <EmptyInvitation />
+          )
         }
-        contentContainerStyle={{ paddingBottom: 12 }}
+        // `flexGrow` so the empty invitation can centre itself in what's left
+        // below the header; a list with rows in it is already taller than this.
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 12 }}
         refreshing={isRefetching}
         onRefresh={refetch}
       />

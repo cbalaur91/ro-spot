@@ -460,3 +460,52 @@ Not changed, deliberately: the pill recipe is spelled out in three files rather 
 extracted — the parchment data pill, the interactive chip and the cherry CTA share a radius
 and little else, and a component that thin would hide more than it saves. Worth revisiting
 once the Map card and the Profile badges land.
+
+---
+
+## Issue #17 — «Ie» restyle 3/6: List empty state — the hora needs dancers
+
+Parent spec: #14, blocked-by #16 (closed). Scope is the *unfiltered* empty branch only.
+
+- [x] 1. Test first: the unfiltered-empty List shows the new hint and a CTA, and pressing the CTA (`await userEvent.press()`) routes to the Add tab → verify: the two new assertions fail against today's screen, for the right reason
+- [x] 2. Test first: the filtered-empty branch keeps `filters.noMatch` and grows *no* CTA → verify: added to the existing "distinguishes an over-filtered list" case, red before the change is guarded
+- [x] 3. Rewrite `list.emptyHint` and add `list.emptyCta` in both locales → verify: `en`/`ro` key sets stay identical; the Romanian reads as Romanian, not as a translation
+- [x] 4. `EmptyInvitation` in `list.tsx`: hora band across the notice's 40px measure, 17px semibold ink line, 13px/1.5 muted hint, outlined cherry pill CTA → verify: the two new tests pass; the canvas's own numbers (26/7/24px stack, 1.5px border, 11×24 padding) are the ones in the code
+- [x] 5. Full gate → verify: `bun run typecheck`, `bun run lint`, `npm test` green; every other List assertion untouched
+
+### Review — issue #17
+
+Shipped: the true-empty List as an invitation. The hora band dances across the notice,
+"No places yet." is promoted to 17px semibold ink, the hint names what the band is showing
+("Approved places show up here — the hora needs dancers." / "Locurile aprobate apar aici —
+hora are nevoie de dansatori."), and an outlined cherry pill sends the user to the Add tab.
+The filtered-empty branch is untouched and still says only that nothing matched.
+
+**Verified.** 200 tests green (was 199 — one new case for the CTA's destination), typecheck
+and lint clean, the Android bundle exports. Checked in the browser at 390×844 against the
+canvas: the block centres in the space below the star band, the band runs the notice's full
+40px measure, and the CTA reads as an outline rather than a demand. The populated List was
+screenshotted before and after the `flexGrow` change and is pixel-identical, which is the
+proof that centring the empty state costs the non-empty one nothing.
+
+**Decisions worth knowing:**
+- **`flexGrow: 1` on the content container, not a fixed top padding.** The canvas centres the
+  block in what's left below the header; a `py-16` block hangs from the top instead. `flexGrow`
+  is the only way a `ListEmptyComponent` can have the leftover space to centre in, and a list
+  with rows in it is already taller than the container, so nothing else moves.
+- **The block sits at 40px, not the app's 24px gutter.** It is one column of centred text and
+  the canvas sets it that way; the gutter is for full-width content.
+- **The band is stretched, not given a width.** `Band` documented `width` as the escape hatch
+  for callers whose parent doesn't size them; a notice that is 40px inside an unknown list
+  width has no number to pass. `Band.tsx`'s doc now names `self-stretch` as the other way out,
+  so the next centred caller doesn't rediscover it.
+- **Two copy strings changed, as the ticket allows, and no others.** `list.emptyHint` was
+  rewritten and `list.emptyCta` added; both locales carry both, and the key sets stay
+  symmetric (36 keys each, asserted by hand this slice).
+
+**Not done, and why:**
+- **Nothing asserts the hora band is *absent* from the filtered branch**, only the CTA. Under
+  Jest `onLayout` never fires, so `Band` renders an empty view whatever branch it is in — an
+  absence assertion would pass even if the band were there. The CTA carries the branch instead.
+- `ScreenNotice` is still not shared with `EmptyInvitation`: its `gap-3` fights the canvas's
+  explicit 26/7/24 stack, so reusing it would mean parameterising the gap away.

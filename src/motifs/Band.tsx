@@ -12,7 +12,8 @@ import { type Grid, repeat, stitch, tiling } from '@/motifs/stitch';
  * A caller normally says only how tall the band is and lets it take its width
  * from the layout, which means it has to be given one: a band in a row or a
  * centred stack has no width of its own and will measure zero, so those callers
- * pass `width` instead. Until the first layout there is nothing to tile and the
+ * either pass `width` or stretch the band (`self-stretch`) when the width is
+ * the parent's to decide rather than the caller's to know. Until the first layout there is nothing to tile and the
  * band is an empty view of the right height, reserving its space without
  * drawing.
  *

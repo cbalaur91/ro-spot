@@ -35,7 +35,10 @@ export default {
     fallbackOrigin: 'Distanțele sunt măsurate din centrul orașului Detroit. Activează localizarea ca să le măsori de unde ești.',
     loading: 'Se încarcă locurile',
     empty: 'Niciun loc deocamdată.',
-    emptyHint: 'Locurile aprobate apar aici.',
+    // Invitația, nu traducerea ei: hora cusută deasupra chiar are nevoie de
+    // dansatori, iar linia asta o spune pe românește.
+    emptyHint: 'Locurile aprobate apar aici — hora are nevoie de dansatori.',
+    emptyCta: 'Adaugă primul loc',
     error: 'Locurile nu au putut fi încărcate.',
   },
   detail: {

@@ -196,6 +196,9 @@ describe('List tab', () => {
 
     expect(screen.getByText('No places match these filters.')).toBeTruthy();
     expect(screen.queryByText('No places yet.')).toBeNull();
+    // A filter the user set is not an invitation to submit — the CTA belongs to
+    // the empty dataset only.
+    expect(screen.queryByRole('button', { name: 'Add the first place' })).toBeNull();
   });
 
   it('invites a first submission when there is nothing to show', async () => {
@@ -204,7 +207,17 @@ describe('List tab', () => {
     await renderScreen(<ListScreen />);
 
     expect(await screen.findByText('No places yet.')).toBeTruthy();
-    expect(screen.getByText('Approved places show up here.')).toBeTruthy();
+    expect(screen.getByText('Approved places show up here — the hora needs dancers.')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Add the first place' })).toBeTruthy();
+  });
+
+  it('sends the first submission to the Add tab', async () => {
+    fetchApprovedPlaces.mockResolvedValue([]);
+
+    await renderScreen(<ListScreen />);
+    await userEvent.press(await screen.findByRole('button', { name: 'Add the first place' }));
+
+    expect(mockPush).toHaveBeenCalledWith('/add');
   });
 
   it('opens a place when its row is tapped', async () => {
