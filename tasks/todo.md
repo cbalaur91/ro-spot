@@ -710,3 +710,126 @@ stand-in with its nearest-place card all match what §4 claims.
   behaviour is covered by the List suite.
 - **Nothing on a device.** Same as the earlier slices — the pins and the map card still owe an
   Expo Go pass before #14 closes.
+
+## Issue #5 — Auth: email/password with persistent session
+
+Covers the email/password half of Phase 3 step 10. Native Google and the Apple flag are #6;
+"your places", the language toggle and account deletion are #8 / #13 / #10 — Profile gets the
+identity and sign-out halves of §4.10 only, shaped so the rest slots in.
+
+Environment constraints unchanged (no emulator, no Docker): device is proven by an Android
+bundle export plus component tests, and the auth contract by an integration suite against the
+real `rospot` project.
+
+Decided with the owner before starting: **`mailer_autoconfirm` is on** for the `rospot` project,
+so sign-up returns a session immediately. The client still handles the no-session answer, so
+turning confirmations back on before public launch needs no code change.
+
+- [x] A. `src/data/auth.ts` — the auth half of the data seam (`signUp`, `signIn`, `signOut`,
+      `currentUser`, `onAuthChange`), with a pure `authProblem` mapping Supabase's error codes to
+      the app's own reasons, TDD → verify: unit suite covers each reason, including the
+      already-registered answer Supabase gives when confirmations are on (a user with no identities)
+- [x] B. `src/state/session.tsx` — `SessionProvider` / `useSession`, mounted in the root layout,
+      TDD → verify: hook suite shows the stored session read back on mount, `isLoading` until it
+      answers, and the subscription updating on sign-in and sign-out
+- [x] C. `src/motifs/Bird.tsx` — the pasăre as a component, since nothing outside `src/motifs/`
+      draws a motif → verify: renders at the grid's own 4:3, mirrored on request
+- [x] D. `src/app/sign-in.tsx` — §4.8 minus the provider buttons (#6) and the password reset (no
+      email delivery in v1 yet), one screen toggling sign-in / create-account → verify: component
+      suite covers success → back, each failure reason's message, and the mode toggle
+- [x] E. `src/app/(tabs)/profile.tsx` — §4.10's identity block and sign-out when signed in, the
+      invitation when not → verify: component suite covers both states and that sign-out signs out
+- [x] F. i18n `auth.*` / `profile.*` in RO and EN → verify: no literal UI copy in either screen
+- [x] G. `src/data/__tests__/auth.integration.test.ts` — real project: sign-up returns a session
+      (autoconfirm), sign-in works, a second client on the same storage recovers the session
+      (the restart), sign-out clears it; throwaway user deleted by the service role afterwards
+      → verify: gated in `jest.config.js` like the other integration suites
+- [x] H. `docs/DESIGN.md` — move §4.8 and the built half of §4.10 into "Built", record what
+      shipped and what was deferred → verify: every number in them read out of the code
+- [x] I. Gates + review → verify: `bun run typecheck`, `bun run lint`, `npm test`,
+      `npx expo export --platform android`, then `/code-review`
+
+### Review — #5
+
+`src/data/auth.ts` and its two suites, `src/state/session.tsx`, `src/app/sign-in.tsx`,
+a rewritten `src/app/(tabs)/profile.tsx`, `src/motifs/Bird.tsx`, `auth.*` / `profile.*` copy
+in both locales, and `docs/DESIGN.md` §4.7–§4.8 moved into "Built".
+
+**Verified.** 253 tests green across 18 suites (24 new), typecheck and lint clean, and
+`npx expo export --platform android` bundles. The integration suite ran against the real
+`rospot` project: sign-up came back with a session, a second client found that session
+through the storage adapter, a duplicate sign-up and a wrong password were refused, and
+sign-out then sign-in worked. The throwaway account was deleted afterwards — the project's
+auth user list is empty again.
+
+**Decisions worth knowing:**
+- **`mailer_autoconfirm` is on for the `rospot` project**, decided with the owner before any
+  code. Sign-up returns a session immediately, so nothing waits on an inbox the built-in
+  SMTP could only deliver to a team address anyway. The client still handles the
+  confirmation answer, and the integration suite asserts the setting rather than assuming
+  it, so flipping it back before public launch fails loudly instead of quietly.
+- **Supabase's error codes stop at the data seam.** `AuthProblem` carries one of eight
+  reasons and the screen reads `auth.errors.<reason>`; the server's English survives on the
+  error for the log. A code the map doesn't name is `unknown`, not a guess.
+- **The identity-less user is read as "address taken".** With confirmations on, Supabase
+  answers a duplicate sign-up with a success-shaped user carrying no identities so that
+  nobody can enumerate accounts. Taken at face value it would leave someone waiting for an
+  email that is never sent.
+- **The session provider settles the cold-start race.** The stored-session read and the
+  auth subscription can both answer; the read is the older answer, so once anything newer
+  has arrived it may only clear the loading flag. Otherwise a sign-in that lands mid-read
+  signs the user back out a moment later.
+- **A component test mocks `@/data/auth` including the `AuthProblem` class.** `requireActual`
+  would pull in `src/data/supabase.ts`, which fails fast without credentials — a screen test
+  that needs a Supabase key is a screen test that breaks a fresh clone.
+- **The Profile tab waits for the stored session rather than drawing the invitation first.**
+  Otherwise every visit flashes "sign in" at someone who already is.
+
+**Review found, and fixed:**
+- **The sign-out failure story was fiction.** `signOut` special-cased `session_not_found`,
+  and the screen claimed a failed sign-out "leaves the user signed in". supabase-js answers
+  a missing session and 401/403/404 with success, and on any other failure it drops the
+  local session *before* returning the error. The special case was dead code, and the real
+  message covers only the case where the client couldn't read the session at all. Code,
+  test names and §4.8 all now say that.
+- **`validation_failed → emailInvalid` contradicted the file's own rule.** It is Supabase's
+  catch-all for a malformed request body, so it could tell someone their address is wrong
+  when it isn't. Dropped; `email_address_invalid` still maps.
+- **The Profile avatar drew a rhomb outside `src/motifs/`.** `Diamond` gained `radius` and
+  children instead — documented in §2's rhomb table as the one rhomb big enough to carry
+  content.
+- **Three touch targets were under 44**: sign-out (`py-1`), the sign-in mode toggle (no
+  padding at all) and the back chip (`p-2.5` around a 22px icon is 42, against a §4.7 that
+  claimed 44). All padding, not `hitSlop`.
+- **The field labels were all caps**, which a screen reader spells out letter by letter —
+  and they are only ever read, never drawn. Sentence-case now, with the reason recorded.
+- **`isSignedIn` had no consumer** outside its own test: `user !== null` stored twice.
+- **`leave()` meant two opposite things** in two files — leaving the screen, and leaving the
+  account. The Profile one is `leaveAccount`.
+- **The integration test overclaimed.** Two clients in one Jest process share the
+  AsyncStorage mock, so it proves the storage-adapter round trip the restart depends on, not
+  a cold start. The comment says that now.
+- **§3's Measures table never got the 28 gutter** §4.7 cites.
+
+**Considered and declined:**
+- **Extracting a shared `PrimaryPill`.** The recipe is written three times, but the third is
+  in `ScreenState.tsx`, which this ticket doesn't touch, and the instances differ in
+  padding, label size and a busy state. Splitting them into one component with three
+  variants trades duplication for speculative generality; the recipe is already documented
+  in §3.
+- **De-duplicating the two test-local `emitAuthChange` helpers.** They are four lines of
+  scaffolding over two different mocks, and a shared test util would couple two suites that
+  have no other reason to move together.
+
+**Not done, and why:**
+- **Nothing on a device.** Same as every slice on this machine: no emulator, no Docker. The
+  Android bundle export and the suites are the checks available. Sign-up, sign-in, sign-out
+  and the restart are owed an Expo Go pass on the owner's phone — the restart especially,
+  since the strongest proof here is a storage round trip rather than a cold start. That
+  check rides along with #21's map verification.
+- **No provider buttons, no divider, no "Forgot password?"** — #6 and the SMTP that makes a
+  reset deliverable. Recorded as divergences in §5, with where each goes when it lands.
+- **Profile's "your places", language toggle and delete account** stay in #8, #13 and #10.
+  §4.8 carries their recipes and says where they slot in.
+- **The Add tab still gates nothing.** Story 12's "prompted to sign in only at that moment"
+  is #7's, and the tab is still `ComingSoon`.

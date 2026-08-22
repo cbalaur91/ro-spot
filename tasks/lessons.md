@@ -16,3 +16,6 @@
 - A view that measures itself with `onLayout` must not take its size from its own children: position the overflowing child absolutely, or each layout pass measures the overflow and grows the next one.
 - Porting a size from the design canvas: CSS is content-box there (no reset in the file), React Native is border-box — a `13px` span with a `2px` border is 17px of rhomb, and copying the 13 straight across shrinks it to a 9px core.
 - Documenting a component: check which props the wrapper actually forwards. `StarBand` never passes `align`, so writing "centred" in a band table meant the parent's layout in one row and the tiling algorithm in another — one word for two mechanisms is a reference that misleads.
+- `unmount()` from `renderHook` is async in @testing-library/react-native 14 too: un-awaited, the effect cleanup hasn't run yet and an unsubscribe assertion fails as if the provider never unsubscribed.
+- `supabase.auth.signOut()` clears the local session *before* it returns a failed revocation, and answers a missing session or a 401/403/404 with success — so "sign-out failed, user still signed in" is only true when the client couldn't read the session at all.
+- Don't use an all-caps display string as an `accessibilityLabel`: screen readers spell it out letter by letter. Store copy sentence-case and uppercase it with a class where it's drawn.

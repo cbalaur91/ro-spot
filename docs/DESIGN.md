@@ -72,6 +72,7 @@ a pin, a chip label — takes it as an inline style value, not as a class.
   canvas, not these.**
 - `Motif.tsx` — draws a stitched grid through `react-native-svg`.
 - `Band.tsx` — `StarBand` and `HoraBand`, a tile run along the x axis.
+- `Bird.tsx` — the pasăre, the one motif that stands alone rather than running in a band.
 - `Diamond.tsx` — the rhomb, the one part of the language that isn't stitched.
 
 ### How a stitch is drawn
@@ -95,7 +96,7 @@ The thread alphabet is one map for every grid — a letter means the same colour
 |---|---|---|
 | `STAR` | 11 × 9, one tile | Header signature and divider, as a band. Never as a single tile. |
 | `HORA` | 24 × 13 (a man and a woman, hand in hand) | The empty state, as a band. Nowhere else — the hora means "there is nobody here yet". |
-| `BIRD` | 16 × 12 | Onboarding and Sign-in only (§4.7, §4.8). A whole-screen welcome motif, not an accent. |
+| `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.9). A whole-screen welcome motif, not an accent. |
 
 `mirror(grid)` gives the same motif facing the other way, for the pairs the canvas uses
 (the Onboarding bird pair). `repeat(grid, times)` widens a tile; `tiling(band, tile, align)`
@@ -118,9 +119,9 @@ lays 107.1px ones.
 
 | Band | Height | Width | Where |
 |---|---|---|---|
-| Star, header signature | `14` | from layout | Under the List and Map headers, and the Add and Profile ones of §4.9–§4.10. Runs past the gutter — a signature that stopped at the gutter would read as a rule. |
+| Star, header signature | `14` | from layout | Under the List, Map and Profile headers, and the Add one of §4.10. Runs past the gutter — a signature that stopped at the gutter would read as a rule. |
 | Star, divider | `10` | from layout | The strip over a map card; the divider between a place's address and its description. |
-| Star, short | `10` | `132` | ComingSoon; the canvas's Sign-in. A fixed width because the parent is a centred column and gives its children none. |
+| Star, short | `10` | `132` | ComingSoon and Sign-in. A fixed width because the parent is a centred column and gives its children none. |
 | Star, welcome | `12` | `200` | Onboarding, under the bird pair. The one band that is neither 10 nor 14. |
 | Hora | `58` | from layout | The List's true-empty invitation, and only there. |
 
@@ -145,6 +146,11 @@ neither.
 | `10` | `line` | The detail screen's not-found notice. |
 | `11` | `cherry` | The Map header's accent; the web map stand-in. |
 | `17` (13px core) | category | The map pin — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. |
+| `44` | `cherry` | Profile's identity mark — `radius` 8, holding counter-rotated initials. The one rhomb big enough to carry content. |
+
+`radius` softens the corners; children are laid over the rhomb's centre **rotated with it**,
+so anything that must read upright counter-rotates itself. The rotation belongs to the
+shape, and undoing it belongs to the content.
 
 **Sizes come from the canvas as content-box.** CSS there has no border-box reset; React
 Native is border-box. A canvas rhomb stated as 13px with a 2px border is 17px of view. Add
@@ -163,7 +169,7 @@ Numbers below are what shipped. Where a class expresses it, the class is given.
 ### Card
 
 One shape — white ground, hairline border, soft radius, a 3px band of colour along the top
-— worn by place rows, the map's bottom card, and the Profile "your places" rows of §4.10.
+— worn by place rows, the map's bottom card, and the Profile "your places" rows of §4.8.
 The numbers below are the place row's; the variants say where they differ.
 
 - `bg-card` (white), `border border-line`, `rounded-[13px]`
@@ -181,7 +187,7 @@ across the top instead of a tint border, `overflow-hidden`, body `px-[14px] pb-[
 `active:opacity-90` rather than 80 — it dims against map tiles, not against paper — and a
 shadow of `0px 4px 14px {ink}1F`, the palette's own colour at 12% rather than a second black.
 
-The Profile card of §4.10 varies less: `rounded-xl` (12) and `px-[14px] py-3`.
+The Profile card of §4.8 varies less: `rounded-xl` (12) and `px-[14px] py-3`.
 
 ### Eyebrow
 
@@ -194,7 +200,7 @@ Uppercase, semibold, `tracking-[1.5px]`, in the category tint.
   contact rows)
 
 Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink`. Use them
-only above an input or a group (§4.9, §4.10).
+only above an input or a group (§4.8, §4.10).
 
 ### Pills
 
@@ -252,6 +258,7 @@ The app has more than one gutter, and each earns its width.
 | Measure | Where |
 |---|---|
 | `24` | The app gutter: headers, chip rows, notices. |
+| `28` | Sign-in. One centred column of fields, narrower than the app gutter so the form reads as a card without one. |
 | `18` | The List's card margin — cards are wider than the text above them. |
 | `22` | The detail body. Prose set to a card's measure reads as a card that lost its border. |
 | `14` / `12` | The map card: 14 from the left and right edges, 12 from the foot. |
@@ -365,7 +372,7 @@ The placeholder for a tab a later slice fills in, at the 36 measure: a 10px cher
 132px-wide 10px star band, centred by the column, at `my-5`, then `comingSoon.<tab>` in `text-[15px] leading-6
 text-muted`. It says what will be here rather than pretending to be a screen — but in the
 app's own language, so an unbuilt tab reads as unfinished rather than as somewhere else.
-Add and Profile both use it today. Replacing one means replacing it with §4.9 or §4.10.
+The Add tab is the last one using it; replacing it means replacing it with §4.10.
 
 #### 4.6 Tab bar — `src/app/(tabs)/_layout.tsx`
 
@@ -373,12 +380,99 @@ Add and Profile both use it today. Replacing one means replacing it with §4.9 o
 `0.2px` tracking, Ionicons outline icons. Four tabs in order: Map, List, Add, Profile.
 Headers are off — every screen draws its own.
 
+#### 4.7 Sign-in — `src/app/sign-in.tsx`
+
+**One screen in two modes**, sign in and create an account, swapped by the footer. Every
+string comes from `auth.signIn.*` or `auth.signUp.*` under the same keys, so the two sets of
+words sit side by side rather than in two places that have to be kept agreeing.
+
+A centred column at the 28 measure, in a `ScrollView` with `flexGrow: 1` and
+`keyboardShouldPersistTaps="handled"` — without the latter the first tap on the pill only
+dismisses the keyboard, and the user presses "Sign in" twice to sign in once.
+
+A 96px `BIRD` (72 tall — the grid's own 4:3), title `text-[26px] leading-[31px] font-bold
+tracking-[-0.4px]` at `mt-[18px]`, subtitle `text-[14px] leading-[21px] text-muted` at
+`mt-[7px]`, then a 132px-wide 10px star band at `my-5`.
+
+Email and password are the **10px-radius white input**: `border border-line rounded-[10px]
+px-[13px] py-3 bg-card`, value `text-[13.5px] text-ink`, placeholder in muted, `gap-2.5`
+between them. Their labels are `accessibilityLabel`s rather than drawn text, and are written
+sentence-case for that reason — a screen reader spells an all-caps string out letter by
+letter. The password carries a `text-[12px] font-medium` `Show` / `Hide` in `voronet`
+inside its right edge, with 64px of padding reserved for it.
+
+A notice line sits between the fields and the pill at `mt-3`, `text-[12.5px] leading-[18px]`
+— cherry for a refusal, muted for the "check your inbox" note — and is
+`accessibilityLiveRegion="polite"`, because the field the user is looking at is not where
+the answer appears. The words are the app's, never the server's: `src/data/auth.ts` maps
+Supabase's error codes onto a short list of reasons and the screen reads
+`auth.errors.<reason>`.
+
+A primary pill closes the form at `mt-3.5`, `py-[13px]`, label 15px. While a request is in
+flight it is `disabled` and trades its label for an `ActivityIndicator` in `surface` — two
+taps on a slow connection are two accounts. Footer at `mt-5`: `text-[12.5px] text-muted`
+with the other mode in `text-[12.5px] font-semibold text-cherry`.
+
+Top left, a back chip: `chevron-back` 22 in ink with `p-[11px]` for the 44 target. Not the
+detail screen's floating circle — there are no photographs here to lose a control against.
+Browsing needs no account, so this screen must never be a wall.
+
+#### 4.8 Profile — `src/app/(tabs)/profile.tsx`
+
+Page header (`text-[24px] font-bold tracking-[-0.4px]`, no subtitle) at the 24 gutter, then
+the 14px star band edge to edge. Under it, one of three states.
+
+**Reading the session** — the `Loading` screen state with `profile.loading`. The stored
+session takes a moment to come back off the device, and drawing the invitation first would
+flash "sign in" at someone who already is, every time they opened the tab.
+
+**Signed in** — the body at the 24 gutter, `py-[18px]`, identity at the top and the account
+block at the foot. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
+counter-rotated inside so they read upright, `text-[15px] font-semibold text-surface`,
+`gap-[13px]` to the address in `text-[16px] font-semibold`. There is no name to show until
+profiles exist, so the address takes the name's line and the initials are read off it —
+two letters where a separator splits the local part (`ana.pop@` → AP), one otherwise. The
+rhomb is hidden from screen readers: it abbreviates the line right beside it.
+
+The account block is pushed to the foot: "Sign out" as `text-[13.5px] font-semibold
+text-cherry`, `self-start`, with `py-[13px]` for the 44 target. The tab redraws from the
+session state rather than from the button, so signing out needs no navigation.
+
+A sign-out that fails says so in `text-[12.5px] text-cherry` above it — and that message is
+narrower than it looks. supabase-js treats "there was nothing to revoke" as success, and on
+any other failure it drops the local session *before* reporting the error, so the usual
+network failure still ends signed out and this tab has already redrawn. The message is for
+the one case left: the client could not read the session it was asked to end, and the user
+really is still signed in.
+
+**Anonymous** — a centred column at the 40 measure: `profile.anonymousTitle` in
+`text-[17px] font-semibold`, `mt-[7px]` to the hint (`text-[13px] leading-[19.5px]
+text-muted`, centred), `mt-6` to a primary pill reading `profile.signIn` that pushes
+`/sign-in`. It states the bargain rather than blocking on it.
+
+Three blocks of the canvas's Profile are **not built yet** and arrive with the slices that
+give them something to show. They slot in between the identity and the account block:
+
+- **Your places** (#8) — the form label ("YOUR PLACES"), then §3 cards at `gap-2`,
+  `rounded-xl`, `px-[14px] py-3`, name `text-[14px] font-semibold` over locality
+  `text-[11.5px] text-muted`, and a **status badge** opposite: `rounded-full px-2.5 py-1`,
+  `text-[10.5px] font-semibold`, PENDING in `goldDark` on `badgePending`, APPROVED in `pine`
+  on `badgeApproved`. The card's 3px top border stays the **category** tint, not the status
+  — status is the badge's job.
+- **Language** (#13) — the form label ("LANGUAGE"), then a segmented pill: `border
+  border-line rounded-full p-[3px] bg-card`, two halves at `py-2`, the selected one filled
+  cherry and full-round with a `text-[13px] font-semibold text-surface` label, the other
+  `text-[13px] font-medium text-muted`. Labels are the language's own endonyms, "English"
+  and "Română", untranslated.
+- **Delete account** (#10) — plain `text-[12.5px] text-muted` under "Sign out", `gap-3`.
+  Deletion is a store requirement, not a feature — it is present, and it is quiet.
+
 ### Specified, not built
 
-These four are mocked in the canvas and have no code. Build them from here; the numbers are
+These two are mocked in the canvas and have no code. Build them from here; the numbers are
 the canvas's, ported content-box → border-box as §2 warns.
 
-#### 4.7 Onboarding
+#### 4.9 Onboarding
 
 A centred column at a 34 measure. The **bird pair** at the top — `mirror(BIRD)` then `BIRD`,
 126 × 96 each, `gap: 6` — then a 200px-wide 12px star band at `mt-5`. Title
@@ -387,24 +481,7 @@ A centred column at a 34 measure. The **bird pair** at the top — `mirror(BIRD)
 at `mt-8`, `px-8 py-[13px]`, label 15px. Below it a plain `text-[13px] font-medium
 text-muted` "Skip for now" — browsing needs no account, and this screen must say so.
 
-#### 4.8 Sign-in
-
-A centred column at a 28 measure. One 96 × 73 `BIRD`, title `text-[26px] leading-[31px]`
-at `mt-[18px]`, subtitle at `mt-[7px]`, then a 132px-wide 10px star band at `my-5`.
-
-Provider buttons are **full-round outlined pills on white**, `py-3`, icon 16 and label
-`text-[14px] font-semibold text-ink`, `gap-[9px]`, stacked `gap-2.5`: Apple takes a
-`1.5px ink` border, Google a `1.5px line` one. Then a rule–label–rule divider ("or with
-email", `text-[11.5px] text-muted`, hairlines in `line`, `gap-3`).
-
-Email and password inputs are the **10px-radius white input**, not a pill:
-`border border-line rounded-[10px] px-[13px] py-3 bg-card`, value `text-[13.5px]`,
-placeholder in muted. Password carries a `text-[12px] font-medium` "Show" in `voronet` at
-its right; "Forgot password?" sits right-aligned under the pair in the same colour. A
-primary pill ("Sign in") at `mt-3.5`, `py-[13px]`, label 15px. Footer: `text-[12.5px]
-text-muted` with "Create an account" in `text-[12.5px] font-semibold text-cherry`.
-
-#### 4.9 Add form
+#### 4.10 Add form
 
 Page header at the 24 gutter — `text-[24px] font-bold tracking-[-0.4px]` title, `text-[12.5px]
 text-muted` subtitle ("Reviewed before it goes public" — the moderation queue is stated up
@@ -432,28 +509,6 @@ muted suffix ("· 1–5 required"). Controls:
 
 A primary pill ("Submit for review") closes the form, `py-3`, label 14px.
 
-#### 4.10 Profile
-
-Page header (`text-[24px] font-bold`, no subtitle), the 14px star band edge to edge, then
-the body at the 24 gutter with `gap-[18px]`.
-
-- **Identity** — a 44px **cherry rhomb avatar with an 8px corner radius**, initials inside
-  counter-rotated so they read upright, `text-[15px] font-semibold text-surface`; `gap-[13px]`
-  to the name (`text-[16px] font-semibold`) over the email (`text-[12.5px] text-muted`).
-- **Your places** — the form label ("YOUR PLACES"), then §3 cards at `gap-2`, `rounded-xl`,
-  `px-[14px] py-3`, name `text-[14px] font-semibold` over locality `text-[11.5px] text-muted`,
-  and a **status badge** opposite: `rounded-full px-2.5 py-1`, `text-[10.5px] font-semibold`,
-  PENDING in `goldDark` on `badgePending`, APPROVED in `pine` on `badgeApproved`. The card's
-  3px top border stays the **category** tint, not the status — status is the badge's job.
-- **Language** — the form label ("LANGUAGE"), then a segmented pill: `border border-line rounded-full p-[3px] bg-card`, two
-  halves at `py-2`, the selected one filled cherry and full-round with a
-  `text-[13px] font-semibold text-surface` label, the other `text-[13px] font-medium
-  text-muted`. Labels are the language's own endonyms, "English" and "Română", untranslated.
-- **Account** — pushed to the bottom (`mt-auto`), `gap-3`: "Sign out" as
-  `text-[13.5px] font-semibold text-cherry`, "Delete account" as plain `text-[12.5px]
-  text-muted`. Deletion is a store requirement, not a feature — it is present, and it is
-  quiet.
-
 ---
 
 ## 5. Divergences from the canvas
@@ -479,6 +534,32 @@ Deliberate, and not to be "fixed" back:
   deleted; centring is the only alignment a full-bleed gallery has.
 - **ComingSoon has no counterpart in the canvas.** The canvas mocks the finished Add and
   Profile screens; the app needs something to show until those ship, and §4.5 is it.
+- **Sign-in ships without the provider buttons and their divider.** Apple and Google are the
+  canvas's top half. They need a development build to work at all (#6), and a divider
+  reading "or with email" over nothing else would be a rule with one side. Both go in
+  together, above the email fields, exactly as the canvas draws them.
+- **Sign-in has no "Forgot password?".** The canvas puts one under the password field. A
+  reset is an email the project cannot yet deliver to a stranger's inbox; the link goes in
+  with the SMTP that makes it work, in `voronet`, right-aligned under the pair.
+- **Sign-in's field labels are accessible names, not drawn labels.** The canvas sets both
+  fields with placeholders only, which leaves a screen reader saying "text field". The
+  labels exist as `accessibilityLabel`s — sentence-case, unlike the drawn form-label mark of
+  §4.10, because a screen reader spells all caps out letter by letter. The design is
+  unchanged and the screen is navigable.
+- **Sign-in has a back chip; the canvas has none.** Browsing needs no account, so a screen
+  nobody is obliged to finish must have a way out that isn't the OS back gesture. It is a
+  plain `chevron-back` on the app's paper rather than the detail screen's floating circle —
+  that circle exists to survive a photograph behind it.
+- **The bird is 96 × 72, not the canvas's 96 × 73.** The grid is 16 × 12, so the height
+  follows the width at the motif's own 4:3. A bird stretched to a box is a bird with a
+  broken wing.
+- **Profile has an anonymous state, which the canvas doesn't mock.** The canvas draws a
+  signed-in Profile only. Most of this app's users have no account and are welcome not to,
+  so the tab has to say something to them that isn't a wall.
+- **Profile's identity line is the email alone.** The canvas has a name over an email.
+  There is no name to show — nothing collects one — and inventing one from the address would
+  put a stranger's name on their own screen. The initials in the rhomb come off the address
+  for the same reason. It becomes name-over-email the day a profile carries a name.
 
 ---
 

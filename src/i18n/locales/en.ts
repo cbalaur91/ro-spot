@@ -61,8 +61,60 @@ export default {
     // Both halves of the truth: it may be gone, or it may not be public yet.
     notFoundHint: 'It may have been removed, or it may still be waiting for review.',
   },
+  auth: {
+    // One screen in two modes, so the two sets of words sit side by side rather
+    // than in two places that have to be kept saying the same thing.
+    signIn: {
+      title: 'Welcome back',
+      subtitle: 'Sign in to add places to the map.',
+      submit: 'Sign in',
+      footer: 'New here?',
+      footerAction: 'Create an account',
+    },
+    signUp: {
+      title: 'Join the map',
+      subtitle: 'An account is for adding places. Browsing never needs one.',
+      submit: 'Create account',
+      footer: 'Already have an account?',
+      footerAction: 'Sign in',
+    },
+    // These two are read out, never drawn — the fields carry placeholders. All
+    // caps here would have a screen reader spelling "E-M-A-I-L".
+    emailLabel: 'Email',
+    emailPlaceholder: 'you@example.com',
+    passwordLabel: 'Password',
+    passwordPlaceholder: 'At least 6 characters',
+    showPassword: 'Show',
+    hidePassword: 'Hide',
+    // Nothing lands in an inbox while the project confirms addresses itself,
+    // but that is one switch in the dashboard and the screen has to be able to
+    // say this the day it flips.
+    confirmationSent: 'Check your inbox to confirm your address, then sign in.',
+    errors: {
+      missingFields: 'Enter your email and your password.',
+      invalidCredentials: 'That email and password don’t go together.',
+      emailTaken: 'That address already has an account. Sign in instead.',
+      emailInvalid: 'That doesn’t look like an email address.',
+      weakPassword: 'That password is too short — use at least 6 characters.',
+      emailNotConfirmed: 'Confirm your address first — the link is in your inbox.',
+      rateLimited: 'Too many tries. Give it a few minutes.',
+      offline: 'No answer from the network. Check your connection and try again.',
+      unknown: 'Something went wrong. Try again.',
+    },
+  },
+  profile: {
+    title: 'Profile',
+    loading: 'Loading your account',
+    // The whole posture of the app, said plainly: an account buys you
+    // contributing, and nothing else is behind it.
+    anonymousTitle: 'Browsing needs no account.',
+    anonymousHint:
+      'Sign in to add places to the map and to keep track of the ones you submitted.',
+    signIn: 'Sign in',
+    signOut: 'Sign out',
+    signOutFailed: 'Could not sign you out. Try again.',
+  },
   comingSoon: {
     add: 'Submitting a place arrives with sign-in.',
-    profile: 'Your places and language settings live here.',
   },
 } as const;
