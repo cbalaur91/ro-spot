@@ -3,9 +3,9 @@ import { View } from 'react-native';
 import { colors } from '@/theme';
 
 /**
- * The width of the column, and so the left inset everything else lines up to.
- * Mirrors the `w-9` / `px-9` the screens use, and is the number to import when
- * a layout has to agree with the gutter arithmetically rather than visually.
+ * The width of the column, and so the left inset the detail screen lines up to.
+ * Mirrors the `px-9` that screen still uses, and is the number to import when a
+ * layout has to agree with it arithmetically rather than visually.
  */
 export const GUTTER = 36;
 
@@ -13,9 +13,9 @@ export const GUTTER = 36;
  * One segment of the column running down the left gutter — a hairline with a
  * rhomboid threaded on it, after Brâncuși's Coloana Infinitului.
  *
- * It is the app's one structural motif, so it lives in one place: a list row is
- * a segment, and the detail screen is the same segment repeated once per thing
- * there is to know about the place. A tinted rhomboid states a category; a
+ * The detail screen is this segment repeated once per thing there is to know
+ * about the place — the last surface still in the pre-«Ie» language, which is
+ * what keeps it here. A tinted rhomboid states a category; a
  * hollow one is just a notch, surface-filled so the hairline stops at its edges
  * instead of running through it.
  *

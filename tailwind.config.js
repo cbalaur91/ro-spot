@@ -18,6 +18,7 @@ module.exports = {
         cherry: '#8C1D2C',
         voronet: '#2A5DA8',
         pine: '#3F5D4A',
+        card: '#FFFFFF',
         parchment: '#F2EEE6',
         gold: '#D9A03D',
         'gold-dark': '#B07C1F',

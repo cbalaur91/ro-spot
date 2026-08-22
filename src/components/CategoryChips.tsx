@@ -1,27 +1,17 @@
 import { useTranslation } from 'react-i18next';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, Text } from 'react-native';
 
 import type { PlaceCategory } from '@/data/places';
+import { Diamond } from '@/motifs/Diamond';
 import { CATEGORIES, useCategoryFilter } from '@/state/categoryFilter';
 import { categoryColor, colors } from '@/theme';
 
 /**
- * The rhomboid from the list gutter, at chip size. Hollow when the chip is off
- * — the colour code is legible before you commit to it — solid when it's on.
+ * A chip is a pill. Off, it is a hairline outline with its label in the
+ * category's own thread, so the colour code is legible before you commit to it;
+ * on, it fills with cherry and takes a small surface diamond, so the filter that
+ * is doing something never looks like the ones that aren't.
  */
-function Rhomboid({ tint, filled }: { tint: string; filled: boolean }) {
-  return (
-    <View
-      className="h-2 w-2 rotate-45"
-      style={
-        filled
-          ? { backgroundColor: tint }
-          : { borderWidth: 1, borderColor: tint, backgroundColor: 'transparent' }
-      }
-    />
-  );
-}
-
 function Chip({ category }: { category: PlaceCategory }) {
   const { t } = useTranslation();
   const { selected, toggle } = useCategoryFilter();
@@ -33,18 +23,16 @@ function Chip({ category }: { category: PlaceCategory }) {
       accessibilityRole="button"
       accessibilityState={{ selected: isOn }}
       onPress={() => toggle(category)}
-      className="flex-row items-center gap-2 rounded-[3px] border px-3 py-2 active:opacity-70"
+      className="flex-row items-center gap-1.5 rounded-full border px-[13px] py-1.5 active:opacity-70"
       style={{
-        borderColor: isOn ? tint : colors.line,
-        // 0x14 ≈ 8% — enough to read as "on" against the warm surface without
-        // competing with the solid rhomboid.
-        backgroundColor: isOn ? `${tint}14` : 'transparent',
+        borderColor: isOn ? colors.cherry : colors.line,
+        backgroundColor: isOn ? colors.cherry : 'transparent',
       }}
     >
-      <Rhomboid tint={tint} filled={isOn} />
+      {isOn ? <Diamond size={6} tint={colors.surface} /> : null}
       <Text
-        className="text-[11px] font-semibold uppercase tracking-[1.5px]"
-        style={{ color: isOn ? tint : colors.muted }}
+        className={isOn ? 'text-[12px] font-semibold' : 'text-[12px] font-medium'}
+        style={{ color: isOn ? colors.surface : tint }}
       >
         {t(`categories.${category}`)}
       </Text>
@@ -67,7 +55,7 @@ export function CategoryChips() {
       showsHorizontalScrollIndicator={false}
       // A ScrollView's content container takes plain values, as the navigator
       // options in `theme.ts` do.
-      contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 36, paddingVertical: 12 }}
+      contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingVertical: 12 }}
     >
       {CATEGORIES.map((category) => (
         <Chip key={category} category={category} />

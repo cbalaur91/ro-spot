@@ -121,6 +121,31 @@ RoSpot placeholder image until issue #11 supplies the owner's real photos.
 - [x] K. `/code-review` (standards + spec), fixed what it found, committed → verified:
       84 tests green, typecheck and lint clean, both bundles export, expo-doctor 21/21
 
+## Issue #16 — «Ie» restyle 2/6: List tab
+
+Style-only slice of #14. No new behaviour, so no new seam to TDD: the ticket's own
+acceptance criterion is that the existing List / Map / detail suites pass **unchanged**,
+which is the strongest available check that this changed style and not behaviour.
+
+- [x] A. `PlaceRow` becomes a stitched card (white, hairline border, 13px radius, 3px
+      tint top border, 9px tint diamond, 10px eyebrow, 16px name, 12px address, parchment
+      distance pill with tabular numerals) → verify: List suite green unchanged, including
+      the ordering test that reads the name as one text node
+- [x] B. `CategoryChips` become pills (selected = filled cherry + surface diamond;
+      unselected = hairline outline, tint label) → verify: the chip role/selected-state
+      assertions in the List and Map suites pass untouched
+- [x] C. List header at the 24px gutter: 30px wordmark, subtitle, origin note, full-bleed
+      star band, then the chips → verify: header copy assertions unchanged; the band draws
+      nothing until layout, so Jest stays SVG-free
+- [x] D. Cards at a 12px gap inside an 18px margin; press feedback becomes opacity →
+      verify: the row-press navigation test still passes
+- [x] E. `ScreenState` adopts the new gutter and pill recipe → verify: loading / error /
+      empty copy assertions unchanged in both locales
+- [x] F. Gates → verify: `bun run typecheck`, `bun run lint`, `npm test` all green;
+      `npx expo export --platform android` bundles; web preview screenshot of the List
+- [x] G. `/code-review` (standards + spec) and fixes → verify: gates still green, committed
+
+
 ---
 
 ## Review
@@ -390,3 +415,48 @@ the mock: 132×10 clipped band, 12 tiles of 12.222px, viewBox 1584×108, and cel
 - The new palette tokens emit no CSS yet: Tailwind only builds classes in use, and the
   screens that use parchment/gold/badges land in slices 2–6. The sync test guards the values
   meanwhile.
+
+### Issue #16 — «Ie» restyle, List tab (2026-08-21)
+
+Shipped: the List tab in the «Ie» language. Place rows are stitched cards — white ground,
+hairline border, 13px radius, a 3px band of the category's thread across the top, a 9px
+diamond bullet, the category eyebrow, and the distance in a parchment pill with tabular
+figures. The header sits at the new 24px gutter under a full-bleed star band, and the
+category chips are pills: filled cherry with a surface diamond when on, a hairline outline
+with the category's own colour when off. 199 tests green (was 198 — the new palette token
+adds one case to the sync suite), typecheck and lint clean, the Android bundle exports.
+
+**The tests did not move.** Every List, Map and detail assertion passed untouched, which is
+the only proof available here that this changed style and not behaviour: the name is still
+one text node (the ordering test reads it), the chips still carry their button role,
+selected state and translated labels, and no copy or i18n key changed.
+
+Verified in the browser rather than on a device, as with every slice so far: the List
+renders the band, the pills and the cards against the live seeded place, and pressing a
+chip filters to "No places match these filters." with the chip drawn in its selected state.
+
+Deviations, all recorded rather than accidental:
+- **The chips stay on the List tab**, where the mock has none — filtering is load-bearing
+  and there is nowhere else for it to live on this screen. Carried over from #14.
+- **The chips restyle reaches the Map tab too**, because both tabs mount one component. The
+  Map's own restyle is the next ticket, so until then its header is pill chips over the old
+  layout.
+- **`ScreenState`'s gutter moved for every screen that uses it**, the detail screen
+  included. #16 asks for the new gutter on the loading, failed and notice states, and they
+  are one shared component; the detail screen catches up in its own ticket.
+- **Card white is a new palette token** (`card`), not a bare `bg-white`. The mock's card is
+  #FFFFFF, and the project requires every colour to live in both palette homes.
+
+Changed after the two-axis code review:
+- `bg-white` became the `card` token in `src/theme.ts` and `tailwind.config.js`.
+- Wordmark tracking -0.75px to -0.5px, chip padding 7px to 6px, and the address line-height
+  from 17px to 15px — each was off the mock's own value.
+- Three comments that had stopped being true were corrected: the claim that the card's top
+  band is the only inline style (the bullet and the eyebrow take the tint too), the claim
+  that one 12px margin does two jobs, and `Column.tsx`'s doc, which still described a list
+  row as one of its segments and the 36px gutter as the app's.
+
+Not changed, deliberately: the pill recipe is spelled out in three files rather than
+extracted — the parchment data pill, the interactive chip and the cherry CTA share a radius
+and little else, and a component that thin would hide more than it saves. Worth revisiting
+once the Map card and the Profile badges land.

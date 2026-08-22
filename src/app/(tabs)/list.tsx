@@ -7,19 +7,20 @@ import { CategoryChips } from '@/components/CategoryChips';
 import { PlaceRow } from '@/components/PlaceRow';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
 import { useVisiblePlaces } from '@/hooks/useVisiblePlaces';
+import { StarBand } from '@/motifs/Band';
 import { useCategoryFilter } from '@/state/categoryFilter';
 
 function Header({ showOriginNote }: { showOriginNote: boolean }) {
   const { t } = useTranslation();
 
   return (
-    <View className="pb-1 pt-2">
-      <View className="px-9">
+    <View className="pt-2">
+      <View className="px-6 pb-3">
         {/* The wordmark is a name, not copy — it stays the same in both locales. */}
-        <Text className="text-[32px] font-bold tracking-tight text-ink">
+        <Text className="text-[30px] font-bold leading-[30px] tracking-[-0.5px] text-ink">
           <Text className="text-cherry">Ro</Text>Spot
         </Text>
-        <Text className="mt-1 text-[13px] text-muted">{t('list.subtitle')}</Text>
+        <Text className="mt-[5px] text-[13px] text-muted">{t('list.subtitle')}</Text>
         {showOriginNote ? (
           // Said once, plainly: the order is real, it's just measured from
           // downtown rather than from you.
@@ -28,6 +29,10 @@ function Header({ showOriginNote }: { showOriginNote: boolean }) {
           </Text>
         ) : null}
       </View>
+      {/* Edge to edge, under the header rather than around it: the band is the
+          app's signature, and a signature that stopped at the gutter would read
+          as a rule instead. */}
+      <StarBand height={14} />
       <CategoryChips />
     </View>
   );
@@ -66,7 +71,9 @@ export default function ListScreen() {
           <Pressable
             accessibilityRole="button"
             onPress={() => router.push({ pathname: '/place/[id]', params: { id: item.id } })}
-            className="active:bg-line/30"
+            // Cards can't take a full-bleed press highlight without losing their
+            // edges, so the whole card dims instead.
+            className="mx-[18px] mb-3 active:opacity-80"
           >
             <PlaceRow place={item} />
           </Pressable>
@@ -85,6 +92,7 @@ export default function ListScreen() {
             )}
           </ScreenNotice>
         }
+        contentContainerStyle={{ paddingBottom: 12 }}
         refreshing={isRefetching}
         onRefresh={refetch}
       />

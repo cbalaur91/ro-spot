@@ -9,7 +9,7 @@ import { colors } from '@/theme';
  * the same gutter as everything else.
  */
 export function ScreenNotice({ children }: { children: React.ReactNode }) {
-  return <View className="items-center gap-3 px-9 py-16">{children}</View>;
+  return <View className="items-center gap-3 px-6 py-16">{children}</View>;
 }
 
 export function Loading({ label }: { label: string }) {
@@ -38,7 +38,7 @@ export function LoadFailed({ label, onRetry }: { label: string; onRetry: () => v
       <Pressable
         accessibilityRole="button"
         onPress={onRetry}
-        className="mt-1 rounded-full bg-cherry px-5 py-2.5 active:opacity-80"
+        className="mt-1 rounded-full bg-cherry px-6 py-3 active:opacity-80"
       >
         <Text className="text-[14px] font-semibold text-surface">{t('actions.retry')}</Text>
       </Pressable>

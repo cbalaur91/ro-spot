@@ -21,6 +21,9 @@ export const colors = {
   // shade of it that carries text. The badge fills are tints of the status they
   // stand for; the map tints are the land under the pins and the deeper stripe
   // that hatches a photo that hasn't loaded.
+  // Cards sit on white rather than on `surface`: the warm ground reads as the
+  // page, and a card has to lift off it.
+  card: '#FFFFFF',
   parchment: '#F2EEE6',
   gold: '#D9A03D',
   goldDark: '#B07C1F',
