@@ -569,3 +569,67 @@ band, the card and its star strip all land on the canvas's numbers.
 - **The card states a fallback-origin distance without the List's caveat.** The canvas puts no
   note on this card, and the ticket lists the card's four fields exactly.
 
+
+---
+
+## Issue #19 — «Ie» restyle 5/6: Place detail — full-bleed hero, stitched body, rail retirement
+
+Parent spec: #14, blocked-by #16 (closed). The last surface still in the pre-«Ie» rail language,
+and with it the rail itself.
+
+- [x] 1. Test first: with the origin resolved, the address line carries the distance and the plain address node survives → verify: red on today's screen for the missing distance, green once the line is two text nodes rather than one concatenated string
+- [x] 2. Test first: while the origin is unresolved, no distance is stated → verify: red only once the distance exists at all
+- [x] 3. Add the origin-hook mock stanza to the detail suite (the one the List and Map suites use) → verify: the fourteen existing assertions run byte-identical
+- [x] 4. Full-bleed hero: gallery at the screen's width from y=0, 32px circular surface back chip overlaid top-left inside a top-edge `SafeAreaView` (no `useSafeAreaInsets` — it needs a provider the suite doesn't mount) → verify: back button role + label unchanged, `Back` press still calls `router.back()`
+- [x] 5. Stitched body at the 22px gutter: category eyebrow → 23px name → address · distance → `StarBand height={10}` divider → description → verify: reading order matches the canvas, distance only when `isResolved`
+- [x] 6. Contact rows: hairline-separated rows replacing the rungs, accessibility contract byte-identical (link role, `label: value`, two-line truncation) → verify: the four contact tests pass untouched
+- [x] 7. Not-found state takes the shared `Diamond`, copy untouched → verify: both not-found strings byte-identical
+- [x] 8. Delete `src/components/Column.tsx` → verify: `grep -rn "components/Column" src/` finds nothing (the detail screen keeps a `GUTTER` of its own — 22px, its body's inset, not the rail's 36)
+- [x] 9. Full gate → verify: `bun run typecheck`, `bun run lint`, `npm test` green; `npx expo export --platform android` bundles; screen seen in the web preview
+
+### Review — issue #19
+
+Shipped: the Place detail in the «Ie» language, and the rail retired with it. The photographs
+run full-bleed from the top of the screen with a 32px surface chip floating over them; below,
+one column of prose at a 22px gutter reads in the canvas's order — category eyebrow, 23px name,
+address with the distance appended, a 10px star band, the description — and the contact fields
+land as hairline-separated rows. `src/components/Column.tsx` had no importers left and is gone.
+
+**Verified.** 205 tests green (was 203; two new — the distance appears once the origin resolves,
+and is absent until it does), typecheck and lint clean, the Android bundle exports. The suite's twelve
+existing tests are byte-identical; the only addition is the origin-hook mock stanza the List
+and Map suites already use. Screenshotted headless at 390×844: the loaded
+screen, the same screen with all three contact rows stubbed in, and the not-found state.
+
+**Decisions worth knowing:**
+- **The address line is two text nodes, not one string.** `<Text>{address}</Text>` and a nested
+  `<Text> · 13 mi</Text>` inside one line of type. Concatenating them would have read the same
+  and cost the suite its plain-address assertion — the line is one measure of text, but the
+  address and the measurement are two different claims.
+- **The back chip takes its inset from a top-edge `SafeAreaView`, not `useSafeAreaInsets`.** The
+  hook throws without a provider mounted above it, and this screen is pushed onto a stack — the
+  chip should not depend on who mounted it. It is also what keeps the suite provider-free.
+- **`PageMarks` is centred (the one change to `PhotoGallery`).** The ticket calls the gallery
+  unchanged, and its photos and paging are. But the marks were aligned to a 36px gutter that
+  this restyle deleted, and left them glued to the screen's left edge under a full-bleed hero.
+  Centring is the only alignment a full-bleed gallery has.
+- **Contact rows separate with a top hairline rather than a bottom one**, so the first row's rule
+  doubles as the line under the description and the block needs no divider of its own.
+- **The back chip's touch target is padding, not `hitSlop`.** The chip hangs off an absolutely
+  positioned, content-sized `SafeAreaView`, and Android clips touch at a parent's bounds — slop
+  outside it would be slop that isn't there. 6px of padding around the 32px chip makes the
+  target the 44 it should be, inside the parent that carries it.
+- **The suite gains two tests as well as the mock stanza.** The ticket asked for one addition and
+  no assertion changes; no existing assertion moved, but the acceptance criterion "distance
+  absent while unresolved" needed something to prove it, and a criterion with no test behind it
+  is a claim. The twelve existing tests are untouched.
+
+**Not done, and why:**
+- **No photo thumbnail strip and no "Report a problem" button**, both in the canvas — recorded as
+  out of scope in #14 (no reporting backend).
+- **Not seen on a device.** No emulator here; the web preview and the Android bundle export are
+  the checks this machine can make. The full-bleed hero under a notch is the thing to look at in
+  Expo Go — owed before #14 closes, with the map pins.
+- **The star band divider ends mid-stitch at the right.** That is the band's own contract (it
+  overdraws a tile and clips) and matches the header's edge-to-edge run, so it is left alone
+  rather than special-cased into a centred short band.

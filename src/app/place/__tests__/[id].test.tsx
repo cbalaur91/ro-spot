@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { Alert, Linking } from 'react-native';
 
 import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
+import { DEFAULT_ORIGIN } from '@/geo';
 import i18n from '@/i18n';
 
 import PlaceDetailScreen from '../[id]';
@@ -19,6 +20,10 @@ jest.mock('@/data/places', () => ({
 // `source` / `accessibilityLabel`, which is all the screen asks of it.
 jest.mock('expo-image', () => ({ Image: jest.requireActual('react-native').Image }));
 
+// The screen measures the place from wherever distances are measured from, and
+// the real hook asks the device.
+jest.mock('@/hooks/useOrigin', () => ({ useOrigin: jest.fn() }));
+
 jest.mock('expo-router', () => ({
   useLocalSearchParams: () => ({ id: 'a' }),
   // `mock`-prefixed so Jest lets the factory close over them.
@@ -28,6 +33,7 @@ jest.mock('expo-router', () => ({
 const mockPush = jest.fn();
 const mockBack = jest.fn();
 const { fetchPlace } = jest.requireMock('@/data/places') as { fetchPlace: jest.Mock };
+const { useOrigin } = jest.requireMock('@/hooks/useOrigin') as { useOrigin: jest.Mock };
 
 const cathedral = {
   ...SEEDED_APPROVED_PLACE,
@@ -46,6 +52,11 @@ beforeEach(async () => {
   // `gcTime: 0` — react-query's default gc timer outlives the test run.
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
+  });
+  useOrigin.mockReturnValue({
+    origin: DEFAULT_ORIGIN,
+    isResolved: true,
+    isUserLocation: true,
   });
   jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -80,6 +91,35 @@ describe('Place detail', () => {
     expect(await screen.findByText(cathedral.name)).toBeTruthy();
     expect(screen.getByText(cathedral.description)).toBeTruthy();
     expect(screen.getByText('Istoric')).toBeTruthy();
+  });
+
+  it('states how far the place is, on the address line', async () => {
+    fetchPlace.mockResolvedValue(cathedral);
+
+    await renderScreen(<PlaceDetailScreen />);
+
+    await screen.findByText(cathedral.name);
+    // Appended to the address rather than replacing it: one line says where the
+    // place is and how far that is from here.
+    expect(screen.getByText('· 13 mi')).toBeTruthy();
+    expect(screen.getByText(cathedral.address)).toBeTruthy();
+  });
+
+  it('states no distance until it knows where to measure from', async () => {
+    // The prompt is still up: the fallback origin is in hand, but it isn't yet
+    // an answer, and a distance we can't stand behind is worse than none.
+    useOrigin.mockReturnValue({
+      origin: DEFAULT_ORIGIN,
+      isResolved: false,
+      isUserLocation: false,
+    });
+    fetchPlace.mockResolvedValue(cathedral);
+
+    await renderScreen(<PlaceDetailScreen />);
+
+    await screen.findByText(cathedral.name);
+    expect(screen.queryByText(/mi$/)).toBeNull();
+    expect(screen.getByText(cathedral.address)).toBeTruthy();
   });
 
   it('puts one photo in the gallery for each stored path', async () => {

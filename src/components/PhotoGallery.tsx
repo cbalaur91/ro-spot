@@ -13,10 +13,9 @@ import { placePhotoUrl } from '@/data/places';
 import { colors } from '@/theme';
 
 /**
- * The one place on the screen the photographs may go past the gutter: a photo
- * runs off the right edge, so the page reads as a deck you can push through
- * rather than a framed picture. The left edge stays on the 36px gutter, because
- * that is where the column runs and nothing crosses it.
+ * One photograph, one page. The detail screen hands the gallery the whole width
+ * of the screen — the photographs are the one thing on it with no gutter to
+ * keep — so a page fills the frame and the next one is a push away.
  */
 function Photo({ path, width, label }: { path: string; width: number; label: string }) {
   return (
@@ -35,10 +34,14 @@ function Photo({ path, width, label }: { path: string; width: number; label: str
   );
 }
 
-/** The rhomboid again, at its smallest: one per photo, solid for the one you're on. */
+/**
+ * The rhomboid again, at its smallest: one per photo, solid for the one you're
+ * on. Centred, because the gallery it belongs to now runs the full width of the
+ * screen and there is no gutter left to align them to.
+ */
 function PageMarks({ count, current }: { count: number; current: number }) {
   return (
-    <View className="mt-3 flex-row gap-2">
+    <View className="mt-3 flex-row justify-center gap-2">
       {Array.from({ length: count }, (_, index) => (
         <View
           key={index}
@@ -95,8 +98,8 @@ export function PhotoGallery({ paths, width }: { paths: string[]; width: number 
         horizontal
         keyExtractor={(path) => path}
         showsHorizontalScrollIndicator={false}
-        // Not `pagingEnabled`: that snaps to the width of the scroll view, which
-        // here runs to the screen edge while a page stops at the gutter.
+        // Not `pagingEnabled`: that snaps to the width of the scroll view, and a
+        // page here is the width the caller gave, which needn't be the same.
         snapToInterval={width}
         snapToAlignment="start"
         decelerationRate="fast"
