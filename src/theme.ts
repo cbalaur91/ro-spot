@@ -15,6 +15,19 @@ export const colors = {
   cherry: '#8C1D2C',
   voronet: '#2A5DA8',
   pine: '#3F5D4A',
+
+  // The «Ie» tokens. `parchment` is the soft fill behind pills and chips, `gold`
+  // the thread that lights the centre of a stitched star and `goldDark` the only
+  // shade of it that carries text. The badge fills are tints of the status they
+  // stand for; the map tints are the land under the pins and the deeper stripe
+  // that hatches a photo that hasn't loaded.
+  parchment: '#F2EEE6',
+  gold: '#D9A03D',
+  goldDark: '#B07C1F',
+  badgePending: '#F7EFDD',
+  badgeApproved: '#E8EEE9',
+  mapLand: '#ECE7DC',
+  mapShade: '#E9E4DA',
 } as const;
 
 export const categoryColor = {

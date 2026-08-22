@@ -5,7 +5,14 @@ const expoConfig = require("eslint-config-expo/flat");
 module.exports = defineConfig([
   expoConfig,
   {
-    ignores: ["dist/*", "src/data/database.types.ts"],
+    // Generated output, and the runtime the design canvas was exported with:
+    // neither is ours to lint.
+    ignores: [
+      "dist/*",
+      ".expo/**",
+      "assets/support.js",
+      "src/data/database.types.ts",
+    ],
   },
   {
     // Jest's globals are injected by the runner, not imported.

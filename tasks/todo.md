@@ -320,3 +320,73 @@ Follow-ups worth an issue:
   check constraint only caps at five. It belongs to the submission form; noted on #7.
 - `.expo/types/router.d.ts` lists the `__tests__` files as routes. They are not in the
   exported bundle (checked by grep), so this is cosmetic, but the type surface is wrong.
+
+---
+
+## Issue #15 — «Ie» restyle 1/6: motif system + design tokens
+
+Parent spec: #14. Scope is the foundation only, traced through `ComingSoon`.
+
+- [x] 1. Install `react-native-svg` via `npx expo install` → verify: it lands in `package.json` at an Expo-resolved version and `bun run typecheck` stays clean
+- [x] 2. Add the seven new tokens to `src/theme.ts` and mirror them in `tailwind.config.js` → verify: a new pure test converts each theme key to its kebab-case Tailwind key and asserts the two palettes are value-identical
+- [x] 3. Port `stitch()` + `mirror()` to `src/motifs/stitch.ts` as pure geometry (structured paths, not a data URI) → verify: unit tests for per-colour path counts, viewBox math, and mirror symmetry, written before the implementation
+- [x] 4. Carry BIRD, STAR, HORA over verbatim into `src/motifs/grids.ts` with colour maps keyed to the theme → verify: the same unit tests assert the grids' dimensions (STAR is 11×9) and that every glyph used resolves to a palette value
+- [x] 5. `Stitched` grid renderer over react-native-svg → verify: renders in the web preview; Jest never reaches it from a screen test
+- [x] 6. `StarBand` (default height 14, 10 for strips, optional fixed width, onLayout-measured, tile = height·11/9, one overdraw tile, clipped) and `HoraBand` (height 58, centred) on the same mechanism → verify: no seams in the web preview at several widths; unmeasured render is an empty fixed-height view
+- [x] 7. `Diamond` primitive (size / tint / border) as plain views → verify: used by `ComingSoon`, visible in the web preview
+- [x] 8. Tracer: `ComingSoon` becomes cherry diamond + 132×10 star band above the unchanged copy → verify: Add and Profile tabs show it in the browser; no i18n or copy diff
+- [x] 9. Full gate → verify: `bun run typecheck`, `bun run lint`, `npm test` all green, and `npx expo export --platform android` bundles with react-native-svg
+
+### Review — issue #15
+
+**What changed.** `src/motifs/` is the new module: `stitch.ts` (pure geometry — `stitch`,
+`mirror`, `repeat`), `grids.ts` (BIRD / STAR / HORA carried over character-for-character
+from the design canvas, plus the shared thread alphabet), `Motif.tsx` (the react-native-svg
+renderer), `Band.tsx` (`StarBand`, `HoraBand`) and `Diamond.tsx`. `src/theme.ts` and
+`tailwind.config.js` gained the seven «Ie» tokens; `ComingSoon` is the tracer.
+
+**Decisions worth knowing:**
+- **Bands tile the grid, not the SVG.** The spec called for translated copies of one tile
+  inside a clipped SVG. Repeating the *rows* and stitching once gets the same picture with
+  one path per colour instead of N groups, and needs no `transform` semantics from
+  react-native-svg. `repeat()` and `tiling()` are both pure, so where a band starts and how
+  many tiles it lays are covered by the geometry tests rather than by looking at it.
+- **A fixed-width band draws on its first render.** The spec's "empty fixed-height view
+  until layout fires" is the measuring path; a band that was told its width has nothing to
+  wait for, and stalling it a frame to preserve an incidental property would be worse. The
+  property it was protecting turned out not to be needed — see the react-native-svg note.
+- **Tiles are absolutely positioned inside the band.** A band whose parent sizes to its
+  content would otherwise measure its own overflow, tile wider, and measure wider again on
+  every layout pass.
+- **One thread alphabet, not one colour map per motif.** `r`/`b`/`y`/`v` mean the same
+  colour in every grid, and path order comes from the grid rather than the map, so a
+  superset map is byte-identical to the mock's three.
+- **`strokeWidth` is `0.28·cell`, not the mock's `toFixed(1)`.** The rounding there was an
+  artifact of serialising the path into a data URI; nothing renders differently at cell 12.
+- **`react-native-svg` needs no Jest mock.** The spec flagged a view stand-in as the
+  fallback; jest-expo transforms it and a full `ComingSoon` render works as-is.
+
+**Verified:** stitch geometry suite (99 cases) green; `npm test` 12 suites / 198 tests green;
+`bun run typecheck` and `bun run lint` clean; `npx expo export` bundles cleanly for both
+android and web with react-native-svg in. The rendered `ComingSoon` tree was checked against
+the mock: 132×10 clipped band, 12 tiles of 12.222px, viewBox 1584×108, and cell coordinates
+(`M2.16 2.16L9.84 9.84…`) identical to the canvas's output.
+
+**Out of scope, flagged rather than done:**
+- `eslint.config.js` now ignores `.expo/**` and `assets/support.js`. Both were already
+  failing lint before this issue — generated router types, and the runtime the design
+  canvas was exported with — and the acceptance criteria ask for lint green. Named the one
+  file rather than all of `assets/` so a hand-written asset script would still be linted.
+- **`Diamond` and `ColumnSegment` now draw the same rhomboid two ways.** Converging them is
+  wasted work: issue #14 deletes the column components in a later slice ("the rail/column
+  components that this restyle orphans removed").
+- The design canvas itself (`assets/RoSpot Motifs.dc.html` and its exported runtime) is
+  still untracked, so the pointers to it from `CLAUDE.md` and `src/motifs/` cite a file the
+  repo doesn't carry. Issue #14's design-reference slice is where it belongs — worth
+  committing there.
+- The motifs are decorative and carry no `accessibilityElementsHidden`. Neither did the
+  placeholder's old rhomboid, so this is a standing question for the restyle as a whole
+  rather than a regression here.
+- The new palette tokens emit no CSS yet: Tailwind only builds classes in use, and the
+  screens that use parchment/gold/badges land in slices 2–6. The sync test guards the values
+  meanwhile.

@@ -13,3 +13,4 @@
 - Make react-query notify synchronously in `jest.setup.js` (`notifyManager.setScheduler((cb) => cb())`): otherwise a batched notification lands after the test that scheduled it and React warns about an update outside `act()` on maybe one run in three.
 - Keep number *formatting* in the locale, not in a helper: `toFixed` hard-codes a `.` and Romanian writes `0,6`. A helper should decide precision and hand i18next a number.
 - When a screen shows one message for an empty result, ask which empty it means — "nothing matched your filter" and "there is nothing yet" send the user to different places, and a test that mocks an empty result without touching the filter will happily certify the wrong one.
+- A view that measures itself with `onLayout` must not take its size from its own children: position the overflowing child absolutely, or each layout pass measures the overflow and grows the next one.

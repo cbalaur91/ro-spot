@@ -39,6 +39,10 @@ with `supabase gen types typescript --linked --schema public`.
   the real project (no Docker on this machine, so there is no local stack).
 - `src/i18n/` — Romanian and English, device locale by default. All UI copy lives here;
   user-submitted content is shown as written.
+- `src/motifs/` — the «Ie» cross-stitch language: pure grid geometry (`stitch.ts`), the
+  pixel grids ported from the design canvas (`grids.ts`), and the components that draw
+  them. The grids are data copied from `assets/RoSpot Motifs.dc.html`, so edit the canvas,
+  not them.
 - `src/theme.ts` — palette, mirrored in `tailwind.config.js` because navigator options
   take plain values rather than NativeWind classes.
 
