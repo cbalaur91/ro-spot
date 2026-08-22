@@ -509,3 +509,63 @@ proof that centring the empty state costs the non-empty one nothing.
   absence assertion would pass even if the band were there. The CTA carries the branch instead.
 - `ScreenNotice` is still not shared with `EmptyInvitation`: its `gap-3` fights the canvas's
   explicit 26/7/24 stack, so reusing it would mean parameterising the gap away.
+
+## Issue #18 — «Ie» restyle 4/6: Map tab — stacked header, diamond pins, nearest-place card
+
+Parent spec: #14, blocked-by #16 (closed). The map's overlays become a stacked column, and
+the one new behaviour in the whole restyle — a nearest-place card — lands here.
+
+- [x] 1. Test first: with places on the map, a bottom card names the nearest one and pressing it (`await userEvent.press()`) routes to that place's detail → verify: red against today's screen, for the absence of the card and not for a query typo
+- [x] 2. Test first: an empty dataset shows the empty notice and *no* card → verify: red only once the card exists; the notice copy assertion stays byte-identical
+- [x] 3. Stack the screen: header row (22px wordmark + 11px cherry diamond at the 24px gutter), `StarBand height={14}`, chips, then the map filling the rest → verify: `PlacesMap` no longer sits under an absolute header; existing provider/marker tests still pass
+- [x] 4. `Pin` becomes a 13px tinted diamond with a 2px surface border and the canvas's shadow, stem dropped → verify: marker `anchor` stays `{x:.5,y:1}`, `tracksViewChanges` untouched, map suite green unchanged
+- [x] 5. Bottom-card recipe (`MapCard`): 10px star-band strip over a padded body, shared by the nearest-place card and both notices → verify: `map.error` + retry and the two empty strings unchanged, card hidden whenever a notice shows
+- [x] 6. Web stub cosmetic pass: diamond on a map-tint field, copy untouched → verify: `map.webUnsupported*` byte-identical in both locales
+- [x] 7. Full gate → verify: `bun run typecheck`, `bun run lint`, `npm test` green; `npx expo export --platform android` bundles
+
+### Review — issue #18
+
+Shipped: the Map tab in the «Ie» language. The header no longer floats over the map — wordmark,
+star band and chips stack above it and the map takes what's left. Pins are the language's rhomb
+in the category's tint with a pale ring and a little shadow, the stem dropped now that the
+marker's anchor puts the rhomb's own lower vertex on the coordinate. At the foot of the map, one
+card recipe (a 10px strip of the star band over a padded body) carries all three things the map
+can't say itself: the nearest place — the restyle's one piece of new behaviour, a whole-card
+button onto that place's detail — the filter that emptied it, or the places that never arrived.
+
+**Verified.** 203 tests green (was 200; three new — the card names the nearest place, opens it,
+and is absent from an empty dataset), typecheck and lint clean, the Android bundle exports. The
+existing map assertions are byte-identical: only one test *title* changed, the one that still
+described a stem. Screenshotted in the browser at 390×844 against the canvas — the stack, the
+band, the card and its star strip all land on the canvas's numbers.
+
+**Decisions worth knowing:**
+- **The pin is `size={17}`, not 13.** The canvas has no `box-sizing` reset, so its `13px` pin
+  with a `2px` border is a 13px core inside a 17px rhomb. React Native is border-box: copying
+  the 13 across would have made the pin *smaller* than the one it replaced. Recorded in
+  `lessons.md`.
+- **`MapCard` is `bg-surface`, breaking `theme.ts`'s "cards sit on white".** That rule is about
+  lifting a card off the app's warm ground; this card sits on map tiles, where the app's own
+  paper is what does the lifting. The exception is stated at the constant.
+- **The shadow is the caller's value.** `Diamond` grew `borderWidth` and `shadow`, but `shadow`
+  takes the CSS value rather than a boolean: what a rhomb has to rise off is not something the
+  rhomb knows. The card's own shadow is `colors.ink` at 12%, not a second spelling of `#171310`.
+- **The distance is bare, not in the List's parchment pill.** A pill is for a column of numbers
+  that has to line up; there is one number here.
+
+**Not done, and why:**
+- **The pins have not been seen on a device.** No emulator on this machine, and the Android
+  custom-marker first-paint risk the parent issue flags is exactly what a `boxShadow` on a
+  marker could trip. `tracksViewChanges` is left on, as the ticket requires. Owed before #14
+  closes.
+- **`NearestPlace` repeats `PlaceRow`'s eyebrow/name/address vocabulary rather than sharing a
+  component.** The two cards share a language, not a layout — different chrome, bullet, distance
+  treatment and leading — and folding them together would drag the List into a Map ticket.
+  Consolidation belongs to the design-reference slice (6/6), which is where the recipes get
+  written down.
+- **Nothing tests "the card hides while an error notice shows" for the error-with-cached-rows
+  case.** The screen's single if/else chain is what guarantees it; a test there would be testing
+  a ternary, and the only way to reach that state is a refetch failure the Map has no gesture for.
+- **The card states a fallback-origin distance without the List's caveat.** The canvas puts no
+  note on this card, and the ticket lists the card's four fields exactly.
+

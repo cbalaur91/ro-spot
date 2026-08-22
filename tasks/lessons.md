@@ -14,3 +14,4 @@
 - Keep number *formatting* in the locale, not in a helper: `toFixed` hard-codes a `.` and Romanian writes `0,6`. A helper should decide precision and hand i18next a number.
 - When a screen shows one message for an empty result, ask which empty it means — "nothing matched your filter" and "there is nothing yet" send the user to different places, and a test that mocks an empty result without touching the filter will happily certify the wrong one.
 - A view that measures itself with `onLayout` must not take its size from its own children: position the overflowing child absolutely, or each layout pass measures the overflow and grows the next one.
+- Porting a size from the design canvas: CSS is content-box there (no reset in the file), React Native is border-box — a `13px` span with a `2px` border is 17px of rhomb, and copying the 13 straight across shrinks it to a 9px core.

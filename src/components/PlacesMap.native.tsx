@@ -1,27 +1,33 @@
 import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { DEFAULT_REGION, nearbyRegion } from '@/geo';
+import { Diamond } from '@/motifs/Diamond';
 import { categoryColor, colors } from '@/theme';
 
 import type { PlacesMapProps } from './PlacesMap.types';
 
 /**
- * A pin is one segment of the column from the list gutter, stood on end: the
- * category rhomboid on a hairline stem, anchored where the stem meets the
- * ground. The pale ring keeps it legible over dark map tiles.
+ * A pin is the rhomb of the language, stood over the coordinate: the category's
+ * tint, a pale ring so it stays legible over dark tiles, and enough shadow to
+ * lift it off them. No stem — with the marker anchored at its foot, the rhomb's
+ * own lower vertex is what marks the spot.
  */
 function Pin({ tint }: { tint: string }) {
   return (
-    <View className="items-center">
-      <View
-        className="h-3.5 w-3.5 rotate-45 border"
-        style={{ backgroundColor: tint, borderColor: colors.surface }}
-      />
-      <View className="h-2.5 w-px" style={{ backgroundColor: tint }} />
-    </View>
+    <Diamond
+      // 17 for a 13px core: the canvas draws the ring outside the rhomb it
+      // states, and a border-box 13 would leave a pin smaller than the one it
+      // replaces. Black rather than ink — a pin has to lift off map tiles,
+      // and their colours aren't ours to match.
+      size={17}
+      tint={tint}
+      border={colors.surface}
+      borderWidth={2}
+      shadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
+    />
   );
 }
 
@@ -52,7 +58,7 @@ export function PlacesMap({ places, origin, isUserLocation }: PlacesMapProps) {
         <Marker
           key={place.id}
           coordinate={{ latitude: place.lat, longitude: place.lng }}
-          // The stem's base is the coordinate, not the rhomboid's centre.
+          // The foot of the rhomb is the coordinate, not its centre.
           anchor={{ x: 0.5, y: 1 }}
           title={place.name}
           description={place.address}

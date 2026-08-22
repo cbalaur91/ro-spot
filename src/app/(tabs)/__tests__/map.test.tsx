@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, userEvent } from '@testing-library/react-native';
+import { render, screen, userEvent, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
 import { DEFAULT_ORIGIN } from '@/geo';
@@ -103,7 +103,7 @@ describe('Map tab', () => {
     expect((await screen.findByTestId('map')).props.provider).toBe('default');
   });
 
-  it('anchors each pin at the foot of its stem, not at the rhomboid', async () => {
+  it('anchors each pin at the foot of the rhomb, not at its centre', async () => {
     await renderScreen(<MapScreen />);
 
     const [marker] = await screen.findAllByTestId('marker');
@@ -176,6 +176,37 @@ describe('Map tab', () => {
 
     expect(await screen.findByText('Places could not be loaded.')).toBeTruthy();
     expect(screen.getByText('Try again')).toBeTruthy();
+  });
+
+  it('carries the nearest place at the foot of the map', async () => {
+    await renderScreen(<MapScreen />);
+
+    // The bakery is downtown and the cathedral is out in Southfield: the card
+    // is the nearest place, not the first one the query happened to return.
+    const card = await screen.findByRole('button', { name: bakery.name });
+    expect(within(card).getByText(bakery.address)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: cathedral.name })).toBeNull();
+  });
+
+  it('opens the nearest place from its card', async () => {
+    await renderScreen(<MapScreen />);
+
+    await userEvent.press(await screen.findByRole('button', { name: bakery.name }));
+
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: '/place/[id]',
+      params: { id: bakery.id },
+    });
+  });
+
+  it('has no nearest place to show when there are no places', async () => {
+    fetchApprovedPlaces.mockResolvedValue([]);
+
+    await renderScreen(<MapScreen />);
+
+    // The notice has the foot of the map to itself.
+    expect(await screen.findByText('No places on the map yet.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: bakery.name })).toBeNull();
   });
 
   it('hides the user dot until the device has actually placed them', async () => {
