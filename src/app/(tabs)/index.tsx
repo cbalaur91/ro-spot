@@ -1,4 +1,5 @@
 import { useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -37,8 +38,9 @@ function Header() {
 // `bg-surface` rather than the List's `bg-card`: a card sits on white when the
 // page under it is the warm ground, but this one sits on map tiles, and the
 // app's own paper is what lifts it off them.
-const CARD =
-  'absolute bottom-3 left-[14px] right-[14px] overflow-hidden rounded-xl border border-line bg-surface';
+const CARD = 'overflow-hidden rounded-xl border border-line bg-surface';
+// Where the card stands: 14 from the sides, 12 from the foot.
+const FOOT_GAP = 12;
 // One line rather than the per-platform shadow props: RN takes the CSS shorthand
 // on both platforms now, and the canvas states the shadow that way — ink at 12%,
 // the palette's own colour rather than a second black.
@@ -145,43 +147,62 @@ export default function MapScreen() {
   const { places, origin, isUserLocation, isPending, isError, refetch } =
     useVisiblePlaces();
   const nearest = places[0];
+  // How much of the map's foot the card covers, so the map can keep its own
+  // furniture — the Google logo, which the terms say must stay visible — clear
+  // of it.
+  const [footInset, setFootInset] = useState(0);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface">
       <Header />
 
       <View className="flex-1">
-        <PlacesMap places={places} origin={origin} isUserLocation={isUserLocation} />
+        <PlacesMap
+          places={places}
+          origin={origin}
+          isUserLocation={isUserLocation}
+          footInset={footInset}
+        />
 
         {/* One foot to the map, and three things that might stand in it: the
             places that never arrived, the map's own emptiness, or — when there
             is anything to show at all — the nearest place. */}
-        {isError ? (
-          <MapCard>
-            <View className="flex-row items-center justify-between gap-4">
-              <Text className="flex-1 text-[13px] text-ink">{t('map.error')}</Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={refetch}
-                className="active:opacity-70"
-              >
-                <Text className="text-[13px] font-semibold text-cherry">
-                  {t('actions.retry')}
-                </Text>
-              </Pressable>
-            </View>
-          </MapCard>
-        ) : nearest ? (
-          <NearestPlace place={nearest} />
-        ) : isPending ? null : (
-          <MapCard>
-            {/* An empty map means two different things, and blaming the chips for
-                an empty dataset would send the user hunting for a filter to undo. */}
-            <Text className="text-[13px] text-muted">
-              {selected.size > 0 ? t('filters.noMatch') : t('map.empty')}
-            </Text>
-          </MapCard>
-        )}
+        <View
+          pointerEvents="box-none"
+          className="absolute left-[14px] right-[14px]"
+          style={{ bottom: FOOT_GAP }}
+          onLayout={(event) => {
+            const { height } = event.nativeEvent.layout;
+            setFootInset(height > 0 ? height + FOOT_GAP : 0);
+          }}
+        >
+          {isError ? (
+            <MapCard>
+              <View className="flex-row items-center justify-between gap-4">
+                <Text className="flex-1 text-[13px] text-ink">{t('map.error')}</Text>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={refetch}
+                  className="active:opacity-70"
+                >
+                  <Text className="text-[13px] font-semibold text-cherry">
+                    {t('actions.retry')}
+                  </Text>
+                </Pressable>
+              </View>
+            </MapCard>
+          ) : nearest ? (
+            <NearestPlace place={nearest} />
+          ) : isPending ? null : (
+            <MapCard>
+              {/* An empty map means two different things, and blaming the chips for
+                  an empty dataset would send the user hunting for a filter to undo. */}
+              <Text className="text-[13px] text-muted">
+                {selected.size > 0 ? t('filters.noMatch') : t('map.empty')}
+              </Text>
+            </MapCard>
+          )}
+        </View>
       </View>
     </SafeAreaView>
   );

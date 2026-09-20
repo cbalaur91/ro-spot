@@ -9,4 +9,6 @@ export type PlacesMapProps = {
   places: PlaceWithDistance[];
   origin: Coords;
   isUserLocation: boolean;
+  /** How much of the map's foot the screen covers, in points. */
+  footInset: number;
 };

@@ -380,6 +380,7 @@ function Submission() {
         <View className="flex-1">
           <PinMap
             coords={step.coords}
+            found={step.found}
             tint={categoryColor[step.fields.category]}
             // Against the step as it is when the event lands: a drag that ends
             // after the send went through must not bring the pin step back.

@@ -31,7 +31,7 @@ function Pin({ tint }: { tint: string }) {
   );
 }
 
-export function PlacesMap({ places, origin, isUserLocation }: PlacesMapProps) {
+export function PlacesMap({ places, origin, isUserLocation, footInset }: PlacesMapProps) {
   const map = useRef<MapView>(null);
   const router = useRouter();
 
@@ -53,6 +53,9 @@ export function PlacesMap({ places, origin, isUserLocation }: PlacesMapProps) {
       showsUserLocation={isUserLocation}
       showsMyLocationButton={false}
       toolbarEnabled={false}
+      // Keeps the Google logo — which has to stay visible — above whatever the
+      // screen stands in the map's foot, and centres the map on what is left.
+      mapPadding={{ top: 0, right: 0, bottom: footInset, left: 0 }}
     >
       {places.map((place) => (
         <Marker
