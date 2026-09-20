@@ -31,7 +31,7 @@ const at = (latitude: number, longitude: number) => ({
 
 describe('PinMap', () => {
   it('stands a draggable pin on the coordinates, anchored at its foot', async () => {
-    await render(<PinMap coords={START} tint="#000" onChange={jest.fn()} />);
+    await render(<PinMap coords={START} found tint="#000" onChange={jest.fn()} />);
 
     expect(screen.getByTestId('marker').props).toMatchObject({
       draggable: true,
@@ -40,9 +40,21 @@ describe('PinMap', () => {
     });
   });
 
+  it('opens on the street for a found address', async () => {
+    await render(<PinMap coords={START} found tint="#000" onChange={jest.fn()} />);
+
+    expect(screen.getByTestId('map').props.initialRegion.latitudeDelta).toBeLessThan(0.01);
+  });
+
+  it('opens wide when the pin is only standing in for the address', async () => {
+    await render(<PinMap coords={START} found={false} tint="#000" onChange={jest.fn()} />);
+
+    expect(screen.getByTestId('map').props.initialRegion.latitudeDelta).toBeGreaterThan(0.1);
+  });
+
   it('reports where the pin was dropped', async () => {
     const onChange = jest.fn();
-    await render(<PinMap coords={START} tint="#000" onChange={onChange} />);
+    await render(<PinMap coords={START} found tint="#000" onChange={onChange} />);
 
     fireEvent(screen.getByTestId('marker'), 'dragEnd', at(42.5, -83.3));
 
@@ -51,7 +63,7 @@ describe('PinMap', () => {
 
   it('moves the pin to a tap on the map', async () => {
     const onChange = jest.fn();
-    await render(<PinMap coords={START} tint="#000" onChange={onChange} />);
+    await render(<PinMap coords={START} found tint="#000" onChange={onChange} />);
 
     fireEvent.press(screen.getByTestId('map'), at(42.6, -83.4));
 

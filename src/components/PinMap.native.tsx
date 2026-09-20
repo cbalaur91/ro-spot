@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT, type LatLng } from 'react-native-maps';
 
-import { nearbyRegion, type Coords } from '@/geo';
+import { nearbyRegion, streetRegion, type Coords } from '@/geo';
 import { Diamond } from '@/motifs/Diamond';
 import { colors } from '@/theme';
 
@@ -21,12 +21,12 @@ const coordsOf = (event: { nativeEvent: { coordinate: LatLng } }): Coords => ({
  * is set once, from where the pin starts; after that the map is the person's to
  * pan, and re-centring it under them on every move would fight the drag.
  */
-export function PinMap({ coords, tint, onChange }: PinMapProps) {
+export function PinMap({ coords, found, tint, onChange }: PinMapProps) {
   return (
     <MapView
       provider={PROVIDER_DEFAULT}
       style={StyleSheet.absoluteFill}
-      initialRegion={nearbyRegion(coords)}
+      initialRegion={found ? streetRegion(coords) : nearbyRegion(coords)}
       toolbarEnabled={false}
       onPress={(event) => onChange(coordsOf(event))}
     >

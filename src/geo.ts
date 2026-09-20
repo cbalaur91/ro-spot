@@ -37,6 +37,9 @@ export const DEFAULT_REGION = regionAround(DEFAULT_ORIGIN, 0.6);
 /** The closer view the map moves to once it knows where the user is. */
 export const nearbyRegion = (coords: Coords): Region => regionAround(coords, 0.25);
 
+/** A few blocks — close enough to tell one building's door from the next. */
+export const streetRegion = (coords: Coords): Region => regionAround(coords, 0.005);
+
 const EARTH_RADIUS_MILES = 3958.7613;
 
 const toRadians = (degrees: number) => (degrees * Math.PI) / 180;

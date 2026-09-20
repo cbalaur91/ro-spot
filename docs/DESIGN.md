@@ -312,6 +312,11 @@ The foot of the map holds exactly one card, and three things can stand in it:
 
 While the query is pending, no card shows.
 
+The screen measures whatever stands in the foot and hands `PlacesMap` the covered height as
+`footInset`, which the map takes as bottom `mapPadding`. That keeps the Google logo — which
+the Maps terms require to stay visible — above the card, and centres the map on the part of
+it the user can see. Don't position the card without going through that wrapper.
+
 Web has no map: `src/components/PlacesMap.tsx` says so on `bg-map-land` under an 11px cherry
 rhomb, and points at the List tab. Web is a dev convenience, not a release target.
 
@@ -420,7 +425,9 @@ lines at most), with a `chevron-back` 22 at `p-[11px]` (and `-ml-[11px]`, so the
 the gutter) labelled `add.pin.edit`. The map fills the middle: `PinMap`, one draggable
 **25px** rhomb in the category tint with a 3px `surface` ring — the browse pin a size up,
 because this one has to be caught by a thumb — anchored at its foot. Hold-and-drag moves it
-and so does a tap on the map; the platform's drag alone is a gesture nobody guesses. The foot
+and so does a tap on the map; the platform's drag alone is a gesture nobody guesses. A found
+address opens at street level (`streetRegion`, a few blocks) so an entrance can actually be
+marked; a missed one opens wide (`nearbyRegion`), because that pin has a way to travel. The foot
 is `px-6 pb-4 pt-3.5 gap-3`: one `text-[12.5px] leading-[18px]` line — the hint in muted,
 or in cherry the geocoder's miss or a failed send — over the primary pill,
 `add.pin.submit`, which is `disabled` and shows an `ActivityIndicator` while sending.
