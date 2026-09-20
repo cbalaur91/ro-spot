@@ -11,18 +11,27 @@ import { categoryColor, colors } from '@/theme';
  * category's own thread, so the colour code is legible before you commit to it;
  * on, it fills with cherry and takes a small surface diamond, so the filter that
  * is doing something never looks like the ones that aren't.
+ *
+ * What "on" means is the caller's: the filter row turns several on, the Add
+ * form's category field exactly one.
  */
-function Chip({ category }: { category: PlaceCategory }) {
+export function CategoryChip({
+  category,
+  isOn,
+  onPress,
+}: {
+  category: PlaceCategory;
+  isOn: boolean;
+  onPress: () => void;
+}) {
   const { t } = useTranslation();
-  const { selected, toggle } = useCategoryFilter();
   const tint = categoryColor[category];
-  const isOn = selected.has(category);
 
   return (
     <Pressable
       accessibilityRole="button"
       accessibilityState={{ selected: isOn }}
-      onPress={() => toggle(category)}
+      onPress={onPress}
       className="flex-row items-center gap-1.5 rounded-full border px-[13px] py-1.5 active:opacity-70"
       style={{
         borderColor: isOn ? colors.cherry : colors.line,
@@ -37,6 +46,19 @@ function Chip({ category }: { category: PlaceCategory }) {
         {t(`categories.${category}`)}
       </Text>
     </Pressable>
+  );
+}
+
+/** The chip as a filter: several may be on, and the Map and List share which. */
+function FilterChip({ category }: { category: PlaceCategory }) {
+  const { selected, toggle } = useCategoryFilter();
+
+  return (
+    <CategoryChip
+      category={category}
+      isOn={selected.has(category)}
+      onPress={() => toggle(category)}
+    />
   );
 }
 
@@ -58,7 +80,7 @@ export function CategoryChips() {
       contentContainerStyle={{ flexDirection: 'row', gap: 8, paddingHorizontal: 24, paddingVertical: 12 }}
     >
       {CATEGORIES.map((category) => (
-        <Chip key={category} category={category} />
+        <FilterChip key={category} category={category} />
       ))}
     </ScrollView>
   );

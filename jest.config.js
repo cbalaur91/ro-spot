@@ -7,6 +7,7 @@ const INTEGRATION_SUITES = [
   '<rootDir>/src/data/__tests__/places.rls.test.ts',
   '<rootDir>/src/data/__tests__/photos.storage.test.ts',
   '<rootDir>/src/data/__tests__/auth.integration.test.ts',
+  '<rootDir>/src/data/__tests__/submissions.integration.test.ts',
 ];
 
 const hasSupabaseCredentials = Boolean(

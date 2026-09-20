@@ -19,3 +19,7 @@
 - `unmount()` from `renderHook` is async in @testing-library/react-native 14 too: un-awaited, the effect cleanup hasn't run yet and an unsubscribe assertion fails as if the provider never unsubscribed.
 - `supabase.auth.signOut()` clears the local session *before* it returns a failed revocation, and answers a missing session or a 401/403/404 with success — so "sign-out failed, user still signed in" is only true when the client couldn't read the session at all.
 - Don't use an all-caps display string as an `accessibilityLabel`: screen readers spell it out letter by letter. Store copy sentence-case and uppercase it with a class where it's drawn.
+- A path check in an RLS policy must match the whole path, not a prefix: `like '<uid>/%'` accepts `<uid>/../seed/x.jpg`, which a URL resolver walks straight out of the folder. Anchor a regex at both ends.
+- expo-location's `geocodeAsync` throws on Android without foreground location permission (iOS doesn't check) — a swallowed throw there reads as "address not found" for everyone who refused the browse prompt. Request the permission before geocoding.
+- Don't size an image from `ImagePickerAsset.width/height` — they may be 0. Decode with the manipulator and read the dimensions off the rendered image.
+- A callback handed to a map/gesture (`onChange={(c) => setStep({ ...step, c })}`) closes over the render's state and can fire after the flow moved on; use a functional update guarded on the state it expects.

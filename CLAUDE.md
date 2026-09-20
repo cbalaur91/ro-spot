@@ -52,7 +52,7 @@ with `supabase gen types typescript --linked --schema public`.
 repo. Read it before touching a screen or a component: it carries the palette and its roles,
 the motif inventory and the rules for using it, the component recipes (card, pills, chip,
 eyebrow, distance, screen states, measures), per-screen guidance for the eight built surfaces
-*and* the two that aren't built yet, and the deliberate divergences from the mock, which
+*and* the one that isn't built yet, and the deliberate divergences from the mock, which
 are not to be "fixed" back.
 
 The design's own source of truth is the Direction B canvas at `assets/RoSpot Motifs.dc.html`

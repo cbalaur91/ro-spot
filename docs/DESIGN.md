@@ -95,7 +95,7 @@ The thread alphabet is one map for every grid — a letter means the same colour
 | Motif | Grid | Where it may be used |
 |---|---|---|
 | `STAR` | 11 × 9, one tile | Header signature and divider, as a band. Never as a single tile. |
-| `HORA` | 24 × 13 (a man and a woman, hand in hand) | The empty state, as a band. Nowhere else — the hora means "there is nobody here yet". |
+| `HORA` | 24 × 13 (a man and a woman, hand in hand) | The two ends of one sentence, as a band: the List's true-empty invitation ("the hora needs dancers") and the Add tab's done state ("the hora has one more dancer"). Nowhere else — the hora is about who has joined, and a third use would make it wallpaper. |
 | `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.9). A whole-screen welcome motif, not an accent. |
 
 `mirror(grid)` gives the same motif facing the other way, for the pairs the canvas uses
@@ -119,11 +119,11 @@ lays 107.1px ones.
 
 | Band | Height | Width | Where |
 |---|---|---|---|
-| Star, header signature | `14` | from layout | Under the List, Map and Profile headers, and the Add one of §4.10. Runs past the gutter — a signature that stopped at the gutter would read as a rule. |
+| Star, header signature | `14` | from layout | Under the List, Map and Profile headers, and the Add one (§4.5). Runs past the gutter — a signature that stopped at the gutter would read as a rule. |
 | Star, divider | `10` | from layout | The strip over a map card; the divider between a place's address and its description. |
-| Star, short | `10` | `132` | ComingSoon and Sign-in. A fixed width because the parent is a centred column and gives its children none. |
+| Star, short | `10` | `132` | Sign-in. A fixed width because the parent is a centred column and gives its children none. |
 | Star, welcome | `12` | `200` | Onboarding, under the bird pair. The one band that is neither 10 nor 14. |
-| Hora | `58` | from layout | The List's true-empty invitation, and only there. |
+| Hora | `58` | from layout | The List's true-empty invitation and the Add tab's done state (§4.3, §4.5), and only there. |
 
 Tiling alignment is a separate axis from where the parent puts the band. `StarBand` is
 always `align: 'start'` — a short star band is *positioned* centred by its parent, never
@@ -142,10 +142,10 @@ neither.
 |---|---|---|
 | `6` | `surface` | The dot inside a selected chip. |
 | `9` | category | The bullet on a place card, 5px down so it reads against the eyebrow rather than above it. |
-| `10` | `cherry` | ComingSoon's accent. |
 | `10` | `line` | The detail screen's not-found notice. |
 | `11` | `cherry` | The Map header's accent; the web map stand-in. |
-| `17` (13px core) | category | The map pin — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. |
+| `17` (13px core) | category | The map pin — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. Bare, the web stand-in for the Add pin. |
+| `25` | category | The Add pin (§4.5) — 3px `surface` ring, the map pin's shadow. A size up because it is dragged, not just seen. |
 | `44` | `cherry` | Profile's identity mark — `radius` 8, holding counter-rotated initials. The one rhomb big enough to carry content. |
 
 `radius` softens the corners; children are laid over the rhomb's centre **rotated with it**,
@@ -200,7 +200,7 @@ Uppercase, semibold, `tracking-[1.5px]`, in the category tint.
   contact rows)
 
 Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink`. Use them
-only above an input or a group (§4.8, §4.10).
+only above an input or a group (§4.5, §4.8).
 
 ### Pills
 
@@ -262,8 +262,8 @@ The app has more than one gutter, and each earns its width.
 | `18` | The List's card margin — cards are wider than the text above them. |
 | `22` | The detail body. Prose set to a card's measure reads as a card that lost its border. |
 | `14` / `12` | The map card: 14 from the left and right edges, 12 from the foot. |
+| `36` | The web stand-ins for the two maps (`PlacesMap.tsx`, `PinMap.tsx`). |
 | `40` | The empty invitation. Centred text at the app gutter reads as a paragraph that lost its page. |
-| `36` | ComingSoon. |
 
 ### Accessibility
 
@@ -366,13 +366,75 @@ A place that isn't there gets a 10px `line` rhomb, `detail.notFound` and
 `detail.notFoundHint` — a pending place and a deleted one look the same from out here, and
 the copy says both rather than guessing.
 
-#### 4.5 ComingSoon — `src/components/ComingSoon.tsx`
+#### 4.5 Add — `src/app/(tabs)/add.tsx`
 
-The placeholder for a tab a later slice fills in, at the 36 measure: a 10px cherry rhomb, a
-132px-wide 10px star band, centred by the column, at `my-5`, then `comingSoon.<tab>` in `text-[15px] leading-6
-text-muted`. It says what will be here rather than pretending to be a screen — but in the
-app's own language, so an unbuilt tab reads as unfinished rather than as somewhere else.
-The Add tab is the last one using it; replacing it means replacing it with §4.10.
+One screen in three steps — form, pin, done — sharing one draft. Not three routes: none of
+them is somewhere a link should land, and the draft has to outlive the pin step in both
+directions (back to fix a typo, or a send that failed). Only a submission that went through
+clears it.
+
+Every step keeps the **page header** at the 24 gutter — `text-[24px] font-bold
+tracking-[-0.4px]` title over a `text-[12.5px] text-muted` subtitle (`add.subtitle`: the
+moderation queue is stated up front, not after submitting) — and the 14px star band edge to
+edge under it.
+
+**Reading the session / anonymous** — as Profile (§4.8): `Loading` first, so the gate never
+flashes at someone already signed in, then the invitation at the 40 measure with a primary
+pill to `/sign-in`. This is the one place the app asks for an account.
+
+**Form** — a `ScrollView` at the 24 gutter, `gap: 14`, `paddingVertical: 18`,
+`keyboardShouldPersistTaps="handled"`. Fields in order: **NAME, CATEGORY, ADDRESS,
+DESCRIPTION, PHONE, WEBSITE, SOCIAL PAGE, PHOTOS** — name first because it is the one thing
+the submitter certainly knows, photos last because choosing them leaves the app, and the
+three optional fields between the prose and the photos so they never stand between someone
+and the required ones.
+
+Each field is a label over a control, `gap-1.5`. The label is the form-label mark (§3),
+stored sentence-case and uppercased by class. Over a text input it is **hidden from screen
+readers** — the input carries the same words as its `accessibilityLabel` (`"Phone
+(optional)"` for the optional three), and a field announced twice is worse than once. Over
+a group (the chips, the photo tiles) nothing else names the group, so the label is read,
+suffix included. A label may carry a
+normal-weight muted suffix: `· optional`, or the photos rule `· 1–5 required`. Under the
+control sits one `text-[11.5px]` line: the field's problem in cherry
+(`accessibilityLiveRegion="polite"`), else its hint in muted (the address has one: "You'll
+confirm the pin on a map next"). Problems appear on **Continue**, all at once, and a field's
+problem clears the moment that field is edited.
+
+- **Text input** — `border border-line rounded-[10px] px-[13px] py-[11px] bg-card`, value
+  `text-[13.5px] text-ink`, placeholder muted. `maxLength` carries the table's ceilings
+  (120 / 300 / 2000), so "too long" is prevented rather than complained about.
+- **Description** — the same input, `multiline`, `minHeight: 56`, `lineHeight: 20`.
+- **Category** — the §3 chip (`CategoryChip`), wrapped `gap-2`, single-select: a place has
+  one category, so pressing another moves the selection rather than adding to it.
+- **Photos** — 52px `rounded-lg` tiles, `gap-2`, wrapping. A chosen photo is the image with
+  a 16px `surface` circle and an 11px `close` at its top right; the whole tile is the button
+  ("Remove photo 2"). The add tile is a `1.5px dashed line` border with a 20px muted `add`,
+  an `ActivityIndicator` while the picker's choices compress, and is gone at five.
+
+A primary pill closes the form, `py-3`, label 14px: `add.continue`. It checks the draft,
+geocodes the address on the device, and opens the pin.
+
+**Pin** — the header's title becomes `add.pin.title`, its subtitle the address as typed (two
+lines at most), with a `chevron-back` 22 at `p-[11px]` (and `-ml-[11px]`, so the ink sits on
+the gutter) labelled `add.pin.edit`. The map fills the middle: `PinMap`, one draggable
+**25px** rhomb in the category tint with a 3px `surface` ring — the browse pin a size up,
+because this one has to be caught by a thumb — anchored at its foot. Hold-and-drag moves it
+and so does a tap on the map; the platform's drag alone is a gesture nobody guesses. The foot
+is `px-6 pb-4 pt-3.5 gap-3`: one `text-[12.5px] leading-[18px]` line — the hint in muted,
+or in cherry the geocoder's miss or a failed send — over the primary pill,
+`add.pin.submit`, which is `disabled` and shows an `ActivityIndicator` while sending.
+
+When the address doesn't geocode, the pin starts at the user's origin (`useOrigin`) and the
+line says it needs moving. A miss is not a dead end; it is why this step exists.
+
+Web has no map: `src/components/PinMap.tsx` draws the rhomb on `bg-map-land` with the
+coordinates in tabular figures and says the pin can't be moved from there.
+
+**Done** — the empty List's column (§4.3) answering itself: a stretched 58px hora band at
+the 40 measure, `mt-[26px]` to `add.done.title` (`text-[17px] font-semibold`), `mt-[7px]` to
+the hint (`text-[13px] leading-[19.5px] text-muted`) — "the hora has one more dancer" — and
+`mt-6` to an outlined pill, `add.done.again`, back to an empty form.
 
 #### 4.6 Tab bar — `src/app/(tabs)/_layout.tsx`
 
@@ -469,7 +531,7 @@ give them something to show. They slot in between the identity and the account b
 
 ### Specified, not built
 
-These two are mocked in the canvas and have no code. Build them from here; the numbers are
+This one is mocked in the canvas and has no code. Build it from here; the numbers are
 the canvas's, ported content-box → border-box as §2 warns.
 
 #### 4.9 Onboarding
@@ -480,34 +542,6 @@ A centred column at a 34 measure. The **bird pair** at the top — `mirror(BIRD)
 `text-[14px] leading-[21px] text-muted` centred at `mt-2.5`. A primary pill ("Get started")
 at `mt-8`, `px-8 py-[13px]`, label 15px. Below it a plain `text-[13px] font-medium
 text-muted` "Skip for now" — browsing needs no account, and this screen must say so.
-
-#### 4.10 Add form
-
-Page header at the 24 gutter — `text-[24px] font-bold tracking-[-0.4px]` title, `text-[12.5px]
-text-muted` subtitle ("Reviewed before it goes public" — the moderation queue is stated up
-front, not after submitting) — then the **14px star band edge to edge**, then the form at
-the 24 gutter with `gap-3.5` between fields.
-
-Five fields, in this order: **NAME, CATEGORY, ADDRESS, DESCRIPTION, PHOTOS** — name first
-because it is the one thing the submitter certainly knows, photos last because choosing them
-leaves the app.
-
-Each field is a label over a control, `gap-1.5`. Labels are the form label mark (11px
-semibold, `tracking-[0.8px]`, ink); the PHOTOS label carries its rule as a normal-weight
-muted suffix ("· 1–5 required"). Controls:
-
-- **Text input** — `border border-line rounded-[10px] px-[13px] py-[11px] bg-card`, value
-  `text-[13.5px] text-ink`.
-- **Description** — the same input, ~56px tall, `leading-[20px]`.
-- **Category** — a chip row, exactly the §3 chip. Single-select here (a place has one
-  category), unlike the multi-select filter chips.
-- **Address** — the input plus a `text-[11.5px] text-muted` hint under it ("You'll confirm
-  the pin on a map next").
-- **Photos** — 52px `rounded-lg` tiles in a `gap-2` row. A chosen photo is the image; the
-  add tile is a `1.5px dashed line` border with a 20px muted `+`. An empty or loading tile
-  is the 45° hatch, 6px `mapShade` / 6px `parchment`.
-
-A primary pill ("Submit for review") closes the form, `py-3`, label 14px.
 
 ---
 
@@ -532,8 +566,17 @@ Deliberate, and not to be "fixed" back:
   sits on map tiles, where the app's own paper is what lifts it off them.
 - **Photo page marks are centred.** They were aligned to a gutter the full-bleed hero
   deleted; centring is the only alignment a full-bleed gallery has.
-- **ComingSoon has no counterpart in the canvas.** The canvas mocks the finished Add and
-  Profile screens; the app needs something to show until those ship, and §4.5 is it.
+- **The Add form has a second step the canvas doesn't draw.** The canvas's form ends in
+  "Submit for review" under a hint that promises a map. The map is the pin step, so the
+  form's pill is "Continue to the map" and "Submit for review" closes the pin — an action
+  keeps one name, and it belongs to the button that performs it.
+- **The Add form has three optional fields the canvas doesn't.** Phone, website and social
+  page are v1 spec fields; they sit between the description and the photos.
+- **The Add form has no hatched tile.** The canvas fills an empty or loading photo tile with
+  a 45° hatch. There are no empty tiles — the row is what was chosen, then the add tile —
+  and the one loading state is the add tile's own spinner.
+- **The Add tab has an anonymous state and a done state**, neither mocked. Both reuse
+  columns the app already has (§4.8's invitation, §4.3's hora).
 - **Sign-in ships without the provider buttons and their divider.** Apple and Google are the
   canvas's top half. They need a development build to work at all (#6), and a divider
   reading "or with email" over nothing else would be a rule with one side. Both go in
@@ -544,7 +587,7 @@ Deliberate, and not to be "fixed" back:
 - **Sign-in's field labels are accessible names, not drawn labels.** The canvas sets both
   fields with placeholders only, which leaves a screen reader saying "text field". The
   labels exist as `accessibilityLabel`s — sentence-case, unlike the drawn form-label mark of
-  §4.10, because a screen reader spells all caps out letter by letter. The design is
+  §4.5, because a screen reader spells all caps out letter by letter. The design is
   unchanged and the screen is navigable.
 - **Sign-in has a back chip; the canvas has none.** Browsing needs no account, so a screen
   nobody is obliged to finish must have a way out that isn't the OS back gesture. It is a
