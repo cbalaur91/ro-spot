@@ -18,8 +18,8 @@ Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being check
 - [ ] 9. Place detail: photo gallery, fields, report button → verify: report writes a `reports` row
 
 ## Phase 3 — Contribute (auth)
-- [ ] 10. Auth flows: email/password first; Google native; Apple flagged off in Expo Go → verify: sign up/in/out on Android device; session persists across restarts
-- [ ] 11. Submission form: fields → geocode → draggable pin → photo pick + compress (≤5, ~1600px) → upload → insert pending → verify: place appears `pending` in dashboard, invisible in app; flipping to `approved` makes it appear
+- [ ] 10. Auth flows: email/password ✅ (#5); Google native + Apple flag deferred 2026-09-19 (#6, needs phone + OAuth client) → verify: sign up/in/out on Android device; session persists across restarts
+- [x] 11. Submission form (#7, device pass owed): fields → geocode → draggable pin → photo pick + compress (≤5, ~1600px) → upload → insert pending → verify: place appears `pending` in dashboard, invisible in app; flipping to `approved` makes it appear
 - [ ] 12. Own-place edit → back to pending; duplicate-proximity flag on insert → verify: edited place disappears from public view until re-approved
 - [ ] 13. Profile screen: my places (with status), language toggle, sign out, delete account → verify: deletion via a throwaway account
 
@@ -833,3 +833,100 @@ auth user list is empty again.
   §4.8 carries their recipes and says where they slot in.
 - **The Add tab still gates nothing.** Story 12's "prompted to sign in only at that moment"
   is #7's, and the tab is still `ComingSoon`.
+
+## Issue #7 — Submit a place
+
+Covers Phase 3 step 11 and the insert half of Phase 1 steps 4–5. #6 (native Google / Apple flag)
+was deferred on 2026-09-19 — it needs a phone and a Google OAuth client; email/password unblocks
+this. Environment unchanged: no emulator, no Docker. This slice is verified in the **web preview
+driven by a headless browser** against the real `rospot` project, plus Jest and the Android export.
+
+Flow: Add tab → (anonymous: sign-in invitation) → form (§4.10 + optional phone / website / social)
+→ "Continue" geocodes the address → pin step (draggable marker on native; web stand-in shows the
+coordinates, no drag) → "Submit for review" compresses, uploads, inserts → done state.
+
+- [x] A. Migration: `places` insert policy for `authenticated` (`author_id = auth.uid()`,
+      `status = 'pending'`, ≥1 `photo_paths`, each exactly `<uid>/<file>.jpg`); storage policy on
+      `place-photos` — authenticated **insert only** inside own `<uid>/` folder (no select/delete:
+      a photo behind an approved place can't be swapped after the moderator saw it)
+      → verify: `supabase db push --linked` applies; types regenerate with no diff beyond expected
+- [x] B. Integration suite `submissions.integration.test.ts` (TDD against the real project):
+      authed insert lands pending and is invisible to anon; insert claiming `approved` or another
+      author is refused; anon insert refused; authed upload to own folder OK, to another folder
+      refused, anon upload refused; flipping to approved (service role) makes it publicly readable
+      → verify: red before the migration, green after; throwaway user + rows + objects deleted
+- [x] C. `src/submission.ts` — pure `validateDraft` (DB length limits, category, 1–5 photos,
+      optional links must pass `telUrl` / `webUrl`) and `fitWithin` (1600px longest edge), TDD
+      → verify: unit suite, incl. never upscaling and zero / six photos
+- [x] D. `src/data/submissions.ts` — `submitPlace(draft)`: upload each photo to
+      `<uid>/<uuid>.jpg`, insert pending. No cleanup of uploads on a failed insert — that needs a delete policy,
+      see above; flagged below
+      → verify: covered by B through the app's own function, not a second copy of the query
+- [x] E. `src/photos.ts` (expo-image-picker + expo-image-manipulator → ≤1600px JPEG ~80%) and
+      `geocodeAddress` (expo-location `geocodeAsync`, `null` on no result / unsupported)
+      → verify: unit tests with the native modules mocked; installs via `npx expo install`
+- [x] F. `PinMap.native.tsx` (draggable rhomb marker) + `PinMap.tsx` web stand-in
+      → verify: `onDragEnd` reports coordinates (mocked map); web bundle has no react-native-maps
+- [x] G. `src/app/(tabs)/add.tsx` — anonymous invitation, form, pin step, done state; RO + EN copy
+      → verify: component suite — gate, per-field problems, single-select category, photo floor /
+      ceiling, geocode miss falls back to the origin with a notice, submit passes final dragged
+      coordinates + address text, busy pill can't double-submit, failure keeps the draft
+- [x] H. `docs/DESIGN.md` — move §4.10 to Built, record the pin step, optional fields and any
+      divergence in §5; retire ComingSoon if orphaned (flag, don't silently delete)
+- [x] I. Gates: `bun run typecheck`, `bun run lint`, `npm test`, `npx expo export --platform android`
+- [x] J. Web end-to-end (headless chromium over CDP, run under node): sign in as a throwaway user,
+      fill the form, attach a photo, submit → row is `pending` via service role, absent from the
+      List; flip to `approved` → appears in the List; then delete row, objects, user
+- [x] K. `/code-review`, fix, commit
+
+### Review — #7
+
+Shipped: the Add tab. Anonymous → sign-in invitation; signed in → the §4.5 form (five canvas
+fields + optional phone / website / social), "Continue to the map" geocodes on the device, the
+pin step (drag or tap; origin + a notice when the geocoder misses), "Submit for review"
+compresses-then-uploads photos to `<uid>/` and inserts `pending`, then a hora done state.
+`ComingSoon` had no users left and is gone. #6 was deferred first (needs a phone + a Google
+OAuth client) and relabelled `ready-for-human`.
+
+**Verified.** 297 tests / 24 suites green (was 253 / 18), typecheck + lint clean, Android bundle
+exports. Integration suite against the real `rospot`: submission lands pending under its
+author, invisible to `fetchApprovedPlaces` / `fetchPlace`, visible through both once approved;
+refused — arriving approved or rejected, someone else's `author_id`, no photo, a borrowed
+photo path, a `../` path, anonymous insert, upload outside own folder. **Web end-to-end in
+headless chromium** (throwaway script, deleted): gate → sign in → problems → fill + file
+chooser → pin → submit → row `pending`, author correct, a 3200×2400 source stored as a
+1600×1200 `image/jpeg`, absent from the List, present after flipping to `approved`; user, row
+and objects deleted after. Screens read against DESIGN at 390×844.
+
+**Review found, and fixed:**
+- **The photo-path check was a prefix match.** `<uid>/../seed/x.jpg` passed `like '<uid>/%'`
+  and resolves to another place's photo. Now a whole-path regex, with a test that was red
+  first. The migration was uncommitted, so it was rewritten and re-applied (policies dropped,
+  `migration repair --status reverted`, pushed again) rather than followed by a corrective one.
+- **Android's geocoder throws without location permission** (expo-location checks it; iOS
+  doesn't), so anyone who refused the browse prompt would always miss. `geocodeAddress` asks
+  again first.
+- **Compression trusted the picker's width/height, which may be 0** → full-size upload → over
+  the bucket's 5 MB. It decodes first and sizes from the decoded image.
+- **A drag landing after the send could resurrect the pin step** (stale `step` closure). The
+  update is functional and guarded.
+- **The draft survived sign-out.** `Submission` is keyed by user id now.
+- **The pin step re-read `draft.photos`** though it claimed to send what was checked; the
+  step carries the photos. `addPhotos` appended to a stale list; functional now.
+- `toFixed` on the web pin's coordinates (→ i18next formatter); the 36 measure restored in
+  §3; group labels (Category, Photos) are spoken, since nothing else names the group.
+
+**Considered and declined:** sharing `Invitation` with Profile and the done column with
+`EmptyInvitation` (two users each, different copy and CTA — same call as #5's `PrimaryPill`);
+`PlaceSubmission = DraftFields & …` (would point `src/data` at a UI module).
+
+**Not done, and why:**
+- **Nothing on a device** — picker, manipulator, geocoder, draggable marker and `fetch(file://)`
+  are proven only through mocks and the web build. Rides with #21.
+- **Orphaned uploads** when an insert fails after its photos went up, and on retry. Cleaning
+  up needs a delete policy this slice deliberately withholds; #10's account deletion clears
+  the folder. No per-user upload cap either — worth an issue before public launch.
+- **`accessibilityLiveRegion` is Android-only**, here as on sign-in; iOS announcements are a
+  standing gap for the i18n/a11y pass (#13).
+- **HORA's rule was widened** (§2): empty List and the Add done state, the two ends of one
+  sentence. Flagged for the owner — revert to a rhomb + star band if it reads as too much.

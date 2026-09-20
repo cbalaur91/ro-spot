@@ -54,6 +54,16 @@ const config: ExpoConfig = {
         isIosBackgroundLocationEnabled: false,
       },
     ],
+    [
+      'expo-image-picker',
+      {
+        photosPermission: 'RoSpot lets you choose photos of a place you are adding to the map.',
+        // The form picks from the library and never opens the camera; without
+        // these the plugin would ask the stores for permissions nothing uses.
+        cameraPermission: false,
+        microphonePermission: false,
+      },
+    ],
   ],
 };
 
