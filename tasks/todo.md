@@ -922,7 +922,7 @@ and objects deleted after. Screens read against DESIGN at 390×844.
 
 **Not done, and why:**
 - **Nothing on a device** — picker, manipulator, geocoder, draggable marker and `fetch(file://)`
-  are proven only through mocks and the web build. Rides with #21.
+  are proven only through mocks and the web build. Rides with #21. *(Done 2026-09-20 — see the device pass below.)*
 - **Orphaned uploads** when an insert fails after its photos went up, and on retry. Cleaning
   up needs a delete policy this slice deliberately withholds; #10's account deletion clears
   the folder. No per-user upload cap either — worth an issue before public launch.
@@ -930,3 +930,27 @@ and objects deleted after. Screens read against DESIGN at 390×844.
   standing gap for the i18n/a11y pass (#13).
 - **HORA's rule was widened** (§2): empty List and the Add done state, the two ends of one
   sentence. Flagged for the owner — revert to a rhomb + star band if it reads as too much.
+
+## Device pass — 2026-09-20 (emulator dev build + owner's phone)
+
+First time anything ran off the web. Setup is a machine fact, recorded in
+`~/.claude/rules/wsl-environment.md`: Windows AVD `rospot` driven from WSL over `adb.exe`, a
+local `assembleDebug` APK (no Expo account), our own Maps key from `.env`. Expo Go on Android
+cannot show the map (see lessons), so the owner's phone proved everything *but* the map.
+
+**Passed on the emulator, against the live project:** Map tiles, location prompt, rhomb pins,
+callout → detail, nearest-place card; List; sign-in, sign-out, session surviving a force-stop;
+Add — sign-in gate, all five validation messages, gallery photo pick, on-device geocode, tap
+and hold-drag of the pin (the stored row carried the dragged coordinates), the missed-address
+fallback (wide view, pin at the user's origin, cherry notice), submit → `pending` row with the
+photo in the author's folder, hora confirmation, draft discarded on sign-out; Romanian via
+per-app locale. Test users, rows and photos were deleted afterwards.
+
+**Found and fixed (#23):** the map card covered the Google logo; a found address opened the pin
+step at metro zoom. **Owner's calls:** the hora stays on the done state; its clipped first
+dancer is the band contract (§2), left alone.
+
+**Still not on a device:** detail-screen links (dialer / browser), photo compression on a real
+large photo (the emulator's test image was small), camera-sourced photos, anything iOS. The
+APK is x86_64-only — the owner's phone needs an arm64 build. #21 can close on the map evidence
+above once the owner agrees.
