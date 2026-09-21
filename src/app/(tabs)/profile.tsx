@@ -1,15 +1,18 @@
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+import { locality } from '@/address';
 import { Loading } from '@/components/ScreenState';
 import { type AuthUser, signOut } from '@/data/auth';
+import type { Place } from '@/data/places';
+import { useMyPlaces } from '@/hooks/useMyPlaces';
 import { StarBand } from '@/motifs/Band';
 import { Diamond } from '@/motifs/Diamond';
 import { useSession } from '@/state/session';
-import { colors } from '@/theme';
+import { categoryColor, colors } from '@/theme';
 
 /**
  * Two letters for the rhomb, taken from the address because there is no name to
@@ -85,6 +88,113 @@ function Invitation() {
 }
 
 /**
+ * What became of a place, opposite its name. The fills are tints of the status
+ * itself — gold while it waits, pine once it is public, cherry when it was
+ * turned down — and the card's own top border stays the category's colour: a
+ * place doesn't change what it is by being in a queue.
+ */
+const BADGE: Record<Place['status'], { fill: string; ink: string }> = {
+  pending: { fill: colors.badgePending, ink: colors.goldDark },
+  approved: { fill: colors.badgeApproved, ink: colors.pine },
+  rejected: { fill: colors.badgeRejected, ink: colors.cherry },
+};
+
+function StatusBadge({ status }: { status: Place['status'] }) {
+  const { t } = useTranslation();
+  const { fill, ink } = BADGE[status];
+
+  return (
+    <View className="rounded-full px-2.5 py-1" style={{ backgroundColor: fill }}>
+      <Text
+        className="text-[10.5px] font-semibold uppercase tracking-[0.5px]"
+        style={{ color: ink }}
+      >
+        {t(`profile.places.status.${status}`)}
+      </Text>
+    </View>
+  );
+}
+
+/**
+ * One place the author sent in: what it is called, roughly where, and where it
+ * has got to. Pressing it opens the same form it was written in.
+ *
+ * The card carries no explicit label — its accessible name is its own text,
+ * which already reads the name, the town and the status.
+ */
+function PlaceCard({ place }: { place: Place }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityHint={t('profile.places.edit')}
+      onPress={() => router.push(`/edit/${place.id}`)}
+      style={{ borderTopColor: categoryColor[place.category], borderTopWidth: 3 }}
+      className="flex-row items-center gap-3 rounded-xl border border-line bg-card px-[14px] py-3 active:opacity-80"
+    >
+      <View className="flex-1">
+        <Text className="text-[14px] font-semibold text-ink" numberOfLines={1}>
+          {place.name}
+        </Text>
+        <Text className="text-[11.5px] text-muted" numberOfLines={1}>
+          {locality(place.address)}
+        </Text>
+      </View>
+      <StatusBadge status={place.status} />
+    </Pressable>
+  );
+}
+
+/**
+ * Your places: the only view anyone has of a submission after they send it.
+ *
+ * The hint above the cards says the rule before it can surprise anybody — an
+ * approved place leaves the map while an edit is looked at, and that is worth
+ * knowing before the edit rather than after it.
+ */
+function YourPlaces() {
+  const { t } = useTranslation();
+  const { places, isPending, isError, refetch } = useMyPlaces();
+
+  return (
+    <View className="mt-6 flex-1 gap-1.5">
+      <Text className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink">
+        {t('profile.places.label')}
+      </Text>
+      <Text className="text-[11.5px] text-muted">{t('profile.places.hint')}</Text>
+
+      {isPending ? (
+        <View className="flex-row items-center gap-2 py-2">
+          <ActivityIndicator color={colors.cherry} />
+          <Text className="text-[12.5px] text-muted">{t('profile.places.loading')}</Text>
+        </View>
+      ) : isError ? (
+        <View className="items-start">
+          <Text className="pt-1 text-[12.5px] text-muted">{t('profile.places.failed')}</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={refetch}
+            className="py-[13px] pr-3 active:opacity-70"
+          >
+            <Text className="text-[13.5px] font-semibold text-cherry">{t('actions.retry')}</Text>
+          </Pressable>
+        </View>
+      ) : places.length === 0 ? (
+        <Text className="pt-1 text-[12.5px] text-muted">{t('profile.places.empty')}</Text>
+      ) : (
+        <View className="mt-1.5 gap-2">
+          {places.map((place) => (
+            <PlaceCard key={place.id} place={place} />
+          ))}
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
  * The account block, at the foot of the screen. Signing out is quiet — cherry
  * because it is the one action here, small because nobody comes to this tab to
  * leave.
@@ -108,9 +218,10 @@ function Account({ user }: { user: AuthUser }) {
   }
 
   return (
-    <View className="flex-1 justify-between">
+    <>
       <Identity user={user} />
-      <View className="gap-3">
+      <YourPlaces />
+      <View className="mt-6 gap-3">
         {failed ? (
           <Text accessibilityLiveRegion="polite" className="text-[12.5px] text-cherry">
             {t('profile.signOutFailed')}
@@ -126,16 +237,16 @@ function Account({ user }: { user: AuthUser }) {
           <Text className="text-[13.5px] font-semibold text-cherry">{t('profile.signOut')}</Text>
         </Pressable>
       </View>
-    </View>
+    </>
   );
 }
 
 /**
- * Who you are here, and the way out.
+ * Who you are here, what you have sent in, and the way out.
  *
- * "Your places", the language toggle and account deletion are the design's
- * other three blocks; they arrive with the slices that give them something to
- * show (#8, #13, #10) and slot in between the identity and the account blocks.
+ * The language toggle and account deletion are the design's other two blocks;
+ * they arrive with the slices that give them something to show (#13, #10) and
+ * slot in between "your places" and the account block.
  */
 export default function ProfileScreen() {
   const { t } = useTranslation();
@@ -156,9 +267,12 @@ export default function ProfileScreen() {
         // already is, every time they open the tab.
         <Loading label={t('profile.loading')} />
       ) : user ? (
-        <View className="flex-1 px-6 py-[18px]">
+        // A scroll rather than a column: the account block still sits at the
+        // foot of an empty screen (`flexGrow`), and a contributor with a dozen
+        // places can still reach the way out.
+        <ScrollView contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 24, paddingVertical: 18 }}>
           <Account user={user} />
-        </View>
+        </ScrollView>
       ) : (
         <Invitation />
       )}

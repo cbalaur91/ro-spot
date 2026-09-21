@@ -26,6 +26,24 @@ without them `jest.config.js` drops that file and warns. Everything else still r
 Web is a **dev convenience, not a release target** — v1 ships iOS + Android. Expect the
 Map tab to be Android/iOS-only once `react-native-maps` lands.
 
+### The Android emulator is the UI/UX check
+
+There is a working Windows AVD named `rospot`, driven from WSL over `adb.exe`, with the app
+already installed as a local debug build. **Every UI or UX change is verified on it** —
+Jest and `npx expo export` prove a screen compiles and behaves, not that it looks right or
+that a control can be hit with a thumb. Screenshot what changed.
+
+```sh
+cd /mnt/c/Users/cbala/AppData/Local/Android/Sdk/emulator && ./emulator.exe -avd rospot -no-snapshot-load -no-boot-anim
+npx expo start            # the installed APK is a debug build: it loads JS from Metro
+~/.cache/emu.sh ui        # element centres; also `shot <name>`, `tap x y`, `text "…"`, `key 4`
+```
+
+Machine details (Metro reachability, Gboard quirks, building a fresh APK) are in
+`~/.claude/rules/wsl-environment.md`. The emulator keeps a standing test account signed in
+— reuse it, and never delete it in cleanup; a pass deletes only the rows and photos it
+created.
+
 Supabase migrations go through the CLI with `SUPABASE_ACCESS_TOKEN` from `.env`:
 `supabase db push --linked`, then regenerate types into `src/data/database.types.ts`
 with `supabase gen types typescript --linked --schema public`.

@@ -113,6 +113,24 @@ export default {
     signIn: 'Sign in',
     signOut: 'Sign out',
     signOutFailed: 'Could not sign you out. Try again.',
+    // The section between who you are and the way out: what you have sent in,
+    // and what became of it.
+    places: {
+      label: 'Your places',
+      // The rule that surprises people, said before it can: an approved place
+      // leaves the map while the edit is looked at.
+      hint: 'Edit a place and it goes back for review.',
+      loading: 'Loading your places',
+      failed: 'Your places could not be loaded.',
+      empty: 'Places you add show up here.',
+      status: {
+        pending: 'Pending',
+        approved: 'Approved',
+        rejected: 'Not accepted',
+      },
+      // Read out after the card's own words, which are the name and the town.
+      edit: 'Edit',
+    },
   },
   add: {
     title: 'Add a place',
@@ -177,5 +195,17 @@ export default {
       hint: 'It joins the map once it’s approved — the hora has one more dancer.',
       again: 'Add another place',
     },
+  },
+  edit: {
+    title: 'Edit your place',
+    // Same posture as the Add tab: the queue is stated up front.
+    subtitle: 'Saving sends it back for review',
+    back: 'Back to your places',
+    loading: 'Loading the place',
+    failed: 'This place could not be loaded.',
+    // A link, a stale tab, or a place that is no longer the author's to change.
+    notFound: 'This place isn’t yours to edit.',
+    save: 'Save and send for review',
+    saveFailed: 'The place was not saved. Check your connection and try again.',
   },
 } as const;

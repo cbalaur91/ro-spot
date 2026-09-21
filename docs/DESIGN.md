@@ -40,12 +40,13 @@ token means adding it in both.
 | `goldDark` | `gold-dark` | `#B07C1F` | The only shade of gold that carries text: the PENDING badge's label. |
 | `badgePending` | `badge-pending` | `#F7EFDD` | PENDING badge fill. |
 | `badgeApproved` | `badge-approved` | `#E8EEE9` | APPROVED badge fill. |
+| `badgeRejected` | `badge-rejected` | `#F6E7E9` | NOT ACCEPTED badge fill — cherry's own tint, as the other two are tints of the status they stand for. |
 | `mapLand` | `map-land` | `#ECE7DC` | The land the map is drawn on — used directly by the web map stand-in. |
 | `mapShade` | `map-shade` | `#E9E4DA` | The deeper stripe of the 45° hatch that stands in for a photo not yet chosen or not yet loaded. |
 
-The eight tokens from `card` down are the «Ie» additions. `goldDark`, `badgePending`,
-`badgeApproved` and `mapShade` are reserved for screens in §4 that have not shipped yet;
-they are in the palette so those screens land on-design rather than inventing a hex.
+The nine tokens from `card` down are the «Ie» additions. `mapShade` is reserved for a screen
+in §4 that has not shipped yet; it is in the palette so that screen lands on-design rather
+than inventing a hex.
 
 ### Category tints
 
@@ -96,7 +97,7 @@ The thread alphabet is one map for every grid — a letter means the same colour
 |---|---|---|
 | `STAR` | 11 × 9, one tile | Header signature and divider, as a band. Never as a single tile. |
 | `HORA` | 24 × 13 (a man and a woman, hand in hand) | The two ends of one sentence, as a band: the List's true-empty invitation ("the hora needs dancers") and the Add tab's done state ("the hora has one more dancer"). Nowhere else — the hora is about who has joined, and a third use would make it wallpaper. |
-| `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.9). A whole-screen welcome motif, not an accent. |
+| `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.10). A whole-screen welcome motif, not an accent. |
 
 `mirror(grid)` gives the same motif facing the other way, for the pairs the canvas uses
 (the Onboarding bird pair). `repeat(grid, times)` widens a tile; `tiling(band, tile, align)`
@@ -373,6 +374,10 @@ the copy says both rather than guessing.
 
 #### 4.5 Add — `src/app/(tabs)/add.tsx`
 
+The form and pin steps live in `src/components/PlaceEditor.tsx`, which the edit screen (§4.9)
+shares; the tab itself is the sign-in gate, the done state, and what to do with a submission
+that went through. Everything below describes the shared component as the Add tab uses it.
+
 One screen in three steps — form, pin, done — sharing one draft. Not three routes: none of
 them is somewhere a link should land, and the draft has to outlive the pin step in both
 directions (back to fix a typo, or a send that failed). Only a submission that went through
@@ -495,8 +500,9 @@ the 14px star band edge to edge. Under it, one of three states.
 session takes a moment to come back off the device, and drawing the invitation first would
 flash "sign in" at someone who already is, every time they opened the tab.
 
-**Signed in** — the body at the 24 gutter, `py-[18px]`, identity at the top and the account
-block at the foot. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
+**Signed in** — the body at the 24 gutter, `py-[18px]`, in a `ScrollView` whose content
+container has `flexGrow: 1`: identity at the top, "your places" between, and the account
+block at the foot of a short screen or below the cards on a long one. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
 counter-rotated inside so they read upright, `text-[15px] font-semibold text-surface`,
 `gap-[13px]` to the address in `text-[16px] font-semibold`. There is no name to show until
 profiles exist, so the address takes the name's line and the initials are read off it —
@@ -519,15 +525,30 @@ really is still signed in.
 text-muted`, centred), `mt-6` to a primary pill reading `profile.signIn` that pushes
 `/sign-in`. It states the bargain rather than blocking on it.
 
-Three blocks of the canvas's Profile are **not built yet** and arrive with the slices that
-give them something to show. They slot in between the identity and the account block:
+**Your places**, `mt-6`, `flex-1` so it takes the room between identity and account: the form
+label ("YOUR PLACES"), a `text-[11.5px] text-muted` line under it saying that an edit goes
+back for review — the rule stated before it can surprise anybody — then §3 cards at `mt-1.5`
+inside the block's own `gap-1.5`, so 12 separates the cards from the hint and 6 the hint from
+the label. Cards at `gap-2`, `rounded-xl`, `px-[14px] py-3`, name `text-[14px] font-semibold` over locality
+`text-[11.5px] text-muted`, both `numberOfLines={1}`, and a **status badge** opposite:
+`rounded-full px-2.5 py-1`, `text-[10.5px] font-semibold uppercase tracking-[0.5px]`,
+PENDING in `goldDark` on `badgePending`, APPROVED in `pine` on `badgeApproved`, NOT ACCEPTED
+in `cherry` on `badgeRejected`. The card's 3px top border stays the **category** tint, not
+the status — a place doesn't change what it is by being in a queue.
 
-- **Your places** (#8) — the form label ("YOUR PLACES"), then §3 cards at `gap-2`,
-  `rounded-xl`, `px-[14px] py-3`, name `text-[14px] font-semibold` over locality
-  `text-[11.5px] text-muted`, and a **status badge** opposite: `rounded-full px-2.5 py-1`,
-  `text-[10.5px] font-semibold`, PENDING in `goldDark` on `badgePending`, APPROVED in `pine`
-  on `badgeApproved`. The card's 3px top border stays the **category** tint, not the status
-  — status is the badge's job.
+The locality is `locality(address)` (`src/address.ts`), not the address: the card already
+says which place this is, so the line under the name only has to say roughly where.
+
+A card is a button whose accessible name is its own text — name, town, status — with
+`profile.places.edit` as its `accessibilityHint`, and it pushes `/edit/<id>`. The block's
+three other states are small rather than screen-sized, because they sit inside a screen that
+has other things on it: a spinner beside `text-[12.5px] text-muted` while it loads, that
+muted line plus a `text-[13.5px] font-semibold text-cherry` `actions.retry` at `py-[13px]`
+when the read failed, and one muted line inviting a first submission when there is nothing.
+
+Two blocks of the canvas's Profile are **not built yet** and arrive with the slices that
+give them something to show. They slot in between "your places" and the account block:
+
 - **Language** (#13) — the form label ("LANGUAGE"), then a segmented pill: `border
   border-line rounded-full p-[3px] bg-card`, two halves at `py-2`, the selected one filled
   cherry and full-round with a `text-[13px] font-semibold text-surface` label, the other
@@ -536,12 +557,32 @@ give them something to show. They slot in between the identity and the account b
 - **Delete account** (#10) — plain `text-[12.5px] text-muted` under "Sign out", `gap-3`.
   Deletion is a store requirement, not a feature — it is present, and it is quiet.
 
+#### 4.9 Edit your place — `src/app/edit/[id].tsx`
+
+The Add tab's form and pin step (§4.5), prefilled with a place the author already sent in and
+reached from a card on §4.8. One form, so a place is edited in the words it was written in:
+`PlaceEditor` is the shared component, and what differs is the header, the pill and what
+happens after the save.
+
+- Header title `edit.title`, subtitle `edit.subtitle` — "Saving sends it back for review",
+  the same posture as `add.subtitle`: the queue is stated up front, not after the fact.
+- The form step carries a back chevron (§4.5's, labelled `edit.back`) because this screen is
+  a route somebody arrived at, not a tab they are standing on.
+- The pin step's pill reads `edit.save`, "Save and send for review" — the action keeps one
+  name, and what the author gets back is a card reading PENDING.
+- An address nobody touched skips the geocoder and keeps the pin as the author left it.
+  Geocoding it again would move a place that only had its description fixed.
+- Photos already in the bucket arrive as tiles like any other and are removed the same way;
+  what is kept travels back as a path rather than as bytes.
+- Loading, failed and not-found are screen states (§3), the last of them plain rather than an
+  error: a stale card, a deleted place and somebody else's id are all "not yours to edit".
+
 ### Specified, not built
 
 This one is mocked in the canvas and has no code. Build it from here; the numbers are
 the canvas's, ported content-box → border-box as §2 warns.
 
-#### 4.9 Onboarding
+#### 4.10 Onboarding
 
 A centred column at a 34 measure. The **bird pair** at the top — `mirror(BIRD)` then `BIRD`,
 126 × 96 each, `gap: 6` — then a 200px-wide 12px star band at `mt-5`. Title
@@ -603,6 +644,14 @@ Deliberate, and not to be "fixed" back:
 - **The bird is 96 × 72, not the canvas's 96 × 73.** The grid is 16 × 12, so the height
   follows the width at the motif's own 4:3. A bird stretched to a box is a bird with a
   broken wing.
+- **"Your places" carries a hint line the canvas doesn't draw.** The canvas has the label and
+  the cards. An edit takes an approved place off the map until it is looked at again, which
+  is a surprise worth spending one muted line to prevent.
+- **The third status reads "Not accepted", not "Rejected".** The column is `rejected` and the
+  badge is cherry, so nothing is being hidden; the word a person reads about their own
+  submission is the one that leaves the door open, because editing it resubmits it.
+- **There is a screen the canvas has no mock for at all: §4.9, editing a place.** It is the
+  Add form again rather than a new surface, so the divergence is the route, not the design.
 - **Profile has an anonymous state, which the canvas doesn't mock.** The canvas draws a
   signed-in Profile only. Most of this app's users have no account and are welcome not to,
   so the tab has to say something to them that isn't a wall.

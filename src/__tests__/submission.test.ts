@@ -1,4 +1,13 @@
-import { checkDraft, EMPTY_DRAFT, fitWithin, PHOTO_EDGE, type PlaceDraft } from '../submission';
+import type { Place } from '@/data/places';
+
+import {
+  checkDraft,
+  draftFromPlace,
+  EMPTY_DRAFT,
+  fitWithin,
+  PHOTO_EDGE,
+  type PlaceDraft,
+} from '../submission';
 
 const photo = (n: number) => ({ uri: `file:///photo-${n}.jpg` });
 
@@ -105,5 +114,49 @@ describe('fitWithin', () => {
   it('never scales a photo up', () => {
     expect(fitWithin(800, 600)).toBeNull();
     expect(fitWithin(PHOTO_EDGE, 900)).toBeNull();
+  });
+});
+
+describe('draftFromPlace', () => {
+  const place: Place = {
+    id: '00000000-0000-4000-8000-000000000009',
+    name: 'Casa Românească',
+    category: 'food_drink',
+    description: 'Sarmale like at home.',
+    address: '1 Main St, Detroit, MI 48226',
+    lat: 42.3314,
+    lng: -83.0458,
+    status: 'approved',
+    author_id: 'u1',
+    phone: '313 555 0100',
+    website: null,
+    social_url: null,
+    photo_paths: ['u1/one.jpg', 'u1/two.jpg'],
+    created_at: '2026-09-01T00:00:00Z',
+  };
+
+  it('fills the form with the place as it stands', () => {
+    expect(draftFromPlace(place, (path) => `https://cdn/${path}`)).toEqual({
+      name: 'Casa Românească',
+      category: 'food_drink',
+      address: '1 Main St, Detroit, MI 48226',
+      description: 'Sarmale like at home.',
+      phone: '313 555 0100',
+      // A field nobody filled in is an empty input, not the word "null".
+      website: '',
+      socialUrl: '',
+      photos: [
+        { uri: 'https://cdn/u1/one.jpg', path: 'u1/one.jpg' },
+        { uri: 'https://cdn/u1/two.jpg', path: 'u1/two.jpg' },
+      ],
+    });
+  });
+
+  it('remembers which photos are already in the bucket', () => {
+    // The path is what tells a kept photo from a chosen one: one is re-sent as
+    // a path, the other has bytes to upload.
+    const draft = draftFromPlace(place, (path) => `https://cdn/${path}`);
+
+    expect(draft.photos.every((photo) => photo.path)).toBe(true);
   });
 });
