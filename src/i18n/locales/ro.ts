@@ -19,6 +19,10 @@ export default {
   actions: {
     retry: 'Încearcă din nou',
     back: 'Înapoi',
+    directions: 'Traseu',
+    directionsTo: 'Traseu până la {{name}}',
+    call: 'Sună',
+    callPlace: 'Sună la {{name}}',
   },
   filters: {
     label: 'Filtrează după categorie',

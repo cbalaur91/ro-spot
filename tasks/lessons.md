@@ -25,3 +25,9 @@
 - A callback handed to a map/gesture (`onChange={(c) => setStep({ ...step, c })}`) closes over the render's state and can fire after the flow moved on; use a functional update guarded on the state it expects.
 - Expo Go on Android cannot verify the map: its shared Google Maps key fails auth (react-native-maps #5888), so `MapView` renders black/blank with only the Google logo while everything around it works. Map tiles, pins and the pin drag need a development build with our own `GOOGLE_MAPS_ANDROID_API_KEY` — don't debug app code over a black map in Expo Go.
 - Don't give test fixtures a long shared name prefix when the thing under test compares names: a suite stamp in every row made unrelated places "similar" and the duplicate check flagged the suite against itself.
+- A `rounded-*` class is not its CSS pixel value on a device: NativeWind counts a rem as 14, so `rounded-lg` is 7. Where a class and an inline `borderRadius` must match, use one literal for both.
+- `SectionList.scrollToLocation` to a sticky section header lands at offset 0 — the list keeps no frame for that cell. Measure what sits above it with `onLayout` and `getScrollResponder().scrollTo` that height.
+- `ListEmptyComponent` never renders in a `SectionList` that has a section: the header and footer cells count as items. Put the empty state in `ListFooterComponent` with `ListFooterComponentStyle={{ flexGrow: 1 }}`.
+- New i18n keys don't arrive by fast refresh — the resources are registered once at init, so the screen shows the raw key until the app is force-stopped and relaunched.
+- A test that an inner control "doesn't trigger the outer one" can't tell nested from sibling — the inner `Pressable` wins the responder either way. Assert the structure: `within(outer).queryByRole(...)` is null.
+

@@ -1,12 +1,15 @@
 /**
- * Turning the three optional contact fields on a place into something
- * `Linking.openURL` will accept.
+ * Turning a place into something `Linking.openURL` will accept: its three
+ * optional contact fields, and the way there.
  *
- * All three are typed by a submitter, so this is the seam where "what a person
- * writes in a form" becomes "a URL we are willing to open". Both functions
- * return `null` for input they can't make sense of, which is also how the detail
- * screen decides a link isn't there.
+ * The contact fields are typed by a submitter, so this is the seam where "what a
+ * person writes in a form" becomes "a URL we are willing to open". `telUrl` and
+ * `webUrl` return `null` for input they can't make sense of, which is also how a
+ * screen decides a link isn't there. `directionsUrl` has nothing to refuse — it
+ * is built from the pin, which is a pair of numbers.
  */
+
+import type { Coords } from '@/geo';
 
 /**
  * Seven digits: a US local number without its area code, and so the shortest
@@ -56,4 +59,22 @@ export function webUrl(raw: string): string | null {
   }
 
   return BARE_DOMAIN.test(trimmed) ? `https://${trimmed}` : null;
+}
+
+/**
+ * A route to the place, in the maps app the platform is sure to have.
+ *
+ * To the **coordinates**, not the address: the pin is what the submitter placed
+ * and the moderator approved, and an address handed to somebody else's geocoder
+ * can land somewhere the pin never was.
+ *
+ * Both forms are `https`, so there is always something to open them — the maps
+ * app where it is installed, a browser where it isn't — and no `geo:` scheme
+ * whose handler Android would make us declare before we could ask about it. The
+ * platform is the caller's to pass, which keeps this file free of React Native.
+ */
+export function directionsUrl({ lat, lng }: Coords, os: string): string {
+  return os === 'ios'
+    ? `https://maps.apple.com/?daddr=${lat},${lng}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat}%2C${lng}`;
 }

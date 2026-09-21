@@ -1,37 +1,50 @@
 import { useRouter } from 'expo-router';
+import { useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FlatList, Pressable, Text, View } from 'react-native';
+import { Pressable, SectionList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChips } from '@/components/CategoryChips';
 import { PlaceRow } from '@/components/PlaceRow';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
-import { useVisiblePlaces } from '@/hooks/useVisiblePlaces';
+import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
 import { HoraBand, StarBand } from '@/motifs/Band';
 import { useCategoryFilter } from '@/state/categoryFilter';
 
-function Header({ showOriginNote }: { showOriginNote: boolean }) {
+/** The top of the page: the name, what it is, and — once — where distances are from. */
+function Masthead({ showOriginNote }: { showOriginNote: boolean }) {
   const { t } = useTranslation();
 
   return (
-    <View className="pt-2">
-      <View className="px-6 pb-3">
-        {/* The wordmark is a name, not copy — it stays the same in both locales. */}
-        <Text className="text-[30px] font-bold leading-[30px] tracking-[-0.5px] text-ink">
-          <Text className="text-cherry">Ro</Text>Spot
+    <View className="px-6 pb-3 pt-2">
+      {/* The wordmark is a name, not copy — it stays the same in both locales. */}
+      <Text className="text-[30px] font-bold leading-[30px] tracking-[-0.5px] text-ink">
+        <Text className="text-cherry">Ro</Text>Spot
+      </Text>
+      <Text className="mt-[5px] text-[13px] text-muted">{t('list.subtitle')}</Text>
+      {showOriginNote ? (
+        // Said once, plainly: the order is real, it's just measured from
+        // downtown rather than from you.
+        <Text className="mt-3 text-[12px] leading-[18px] text-muted">
+          {t('list.fallbackOrigin')}
         </Text>
-        <Text className="mt-[5px] text-[13px] text-muted">{t('list.subtitle')}</Text>
-        {showOriginNote ? (
-          // Said once, plainly: the order is real, it's just measured from
-          // downtown rather than from you.
-          <Text className="mt-3 text-[12px] leading-[18px] text-muted">
-            {t('list.fallbackOrigin')}
-          </Text>
-        ) : null}
-      </View>
-      {/* Edge to edge, under the header rather than around it: the band is the
-          app's signature, and a signature that stopped at the gutter would read
-          as a rule instead. */}
+      ) : null}
+    </View>
+  );
+}
+
+/**
+ * The band and the chips, which stay when the masthead scrolls away: a filter
+ * you have to scroll back up to reach is one you stop using halfway down.
+ *
+ * On `surface`, because pinned it has cards passing under it. The band runs
+ * edge to edge, under the header rather than around it: it is the app's
+ * signature, and a signature that stopped at the gutter would read as a rule
+ * instead.
+ */
+function FilterBar() {
+  return (
+    <View className="bg-surface">
       <StarBand height={14} />
       <CategoryChips />
     </View>
@@ -81,16 +94,46 @@ export default function ListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
   const { selected } = useCategoryFilter();
-  const { places, isResolved, isUserLocation, isPending, isError, isRefetching, refetch } =
-    useVisiblePlaces();
+  const {
+    places,
+    isResolved,
+    isUserLocation,
+    isPending,
+    isError,
+    isRefetching,
+    fetchedAt,
+    refetch,
+  } = useVisiblePlaces();
   // Only once the device has answered: saying "distances are from downtown"
   // while the prompt is still up would be a claim we can't yet make.
   const showOriginNote = isResolved && !isUserLocation;
+  // One section, because a section header is the list's own word for "the part
+  // that pins". The key is what keeps the chip row mounted across a refilter.
+  const sections = useMemo(() => [{ key: 'places', data: places }], [places]);
+
+  // A refilter from the pinned chips starts the new list at its top. The list is
+  // nearest first, and left where it was it would open on whatever the shorter
+  // list happens to have at that depth — usually its far end. To the foot of
+  // the masthead, not to zero: that is exactly where the bar pins, so the chips
+  // don't move under the finger that is still choosing among them. Above the pin
+  // there is nothing to correct, and the masthead stays.
+  //
+  // By the height measured here rather than `scrollToLocation`: the list keeps no
+  // frame for a sticky header's cell and sends that to zero.
+  const list = useRef<SectionList<PlaceWithDistance>>(null);
+  const mastheadHeight = useRef(0);
+  const offset = useRef(0);
+  useEffect(() => {
+    if (offset.current > mastheadHeight.current) {
+      list.current?.getScrollResponder()?.scrollTo({ y: mastheadHeight.current, animated: false });
+    }
+  }, [selected]);
 
   if (isPending || isError) {
     return (
       <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-        <Header showOriginNote={showOriginNote} />
+        <Masthead showOriginNote={showOriginNote} />
+        <FilterBar />
         {isPending ? (
           <Loading label={t('list.loading')} />
         ) : (
@@ -102,25 +145,35 @@ export default function ListScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <FlatList
-        data={places}
+      <SectionList
+        ref={list}
+        sections={sections}
         keyExtractor={(place) => place.id}
-        ListHeaderComponent={<Header showOriginNote={showOriginNote} />}
+        ListHeaderComponent={
+          <View onLayout={(event) => (mastheadHeight.current = event.nativeEvent.layout.height)}>
+            <Masthead showOriginNote={showOriginNote} />
+          </View>
+        }
+        onScroll={(event) => (offset.current = event.nativeEvent.contentOffset.y)}
+        renderSectionHeader={() => <FilterBar />}
+        // Android's default is off.
+        stickySectionHeadersEnabled
         renderItem={({ item }) => (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => router.push({ pathname: '/place/[id]', params: { id: item.id } })}
-            // Cards can't take a full-bleed press highlight without losing their
-            // edges, so the whole card dims instead.
-            className="mx-[18px] mb-3 active:opacity-80"
-          >
-            <PlaceRow place={item} />
-          </Pressable>
+          <View className="mx-[18px] mb-3">
+            <PlaceRow
+              place={item}
+              fetchedAt={fetchedAt}
+              onPress={() => router.push({ pathname: '/place/[id]', params: { id: item.id } })}
+            />
+          </View>
         )}
-        ListEmptyComponent={
-          // An empty list means two different things, and telling the user which
-          // one saves them wondering where their places went.
-          selected.size > 0 ? (
+        // The footer, not `ListEmptyComponent`: a section's header counts as an
+        // item, so a list that still shows its chips is never empty — and the
+        // chips are how you get out of the first of these two.
+        ListFooterComponent={
+          places.length > 0 ? null : selected.size > 0 ? (
+            // An empty list means two different things, and telling the user
+            // which one saves them wondering where their places went.
             <ScreenNotice>
               <Text className="text-[15px] text-ink">{t('filters.noMatch')}</Text>
             </ScreenNotice>
@@ -128,8 +181,9 @@ export default function ListScreen() {
             <EmptyInvitation />
           )
         }
-        // `flexGrow` so the empty invitation can centre itself in what's left
-        // below the header; a list with rows in it is already taller than this.
+        // `flexGrow` on both so the empty invitation can centre itself in what's
+        // left below the header; a list with rows in it is already taller than this.
+        ListFooterComponentStyle={{ flexGrow: 1 }}
         contentContainerStyle={{ flexGrow: 1, paddingBottom: 12 }}
         refreshing={isRefetching}
         onRefresh={refetch}

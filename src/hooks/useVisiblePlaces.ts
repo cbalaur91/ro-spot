@@ -20,6 +20,8 @@ export type VisiblePlaces = {
   isPending: boolean;
   isError: boolean;
   isRefetching: boolean;
+  /** When the rows last arrived. Changes with every refetch, which is what a row can retry on. */
+  fetchedAt: number;
   refetch: () => void;
 };
 
@@ -56,6 +58,7 @@ export function useVisiblePlaces(): VisiblePlaces {
     isPending: query.isPending,
     isError: query.isError,
     isRefetching: query.isRefetching,
+    fetchedAt: query.dataUpdatedAt,
     // Wrapped, not passed through: `onPress` and `onRefresh` both hand their
     // callback an argument, and react-query would read a gesture event as its
     // `RefetchOptions`.
