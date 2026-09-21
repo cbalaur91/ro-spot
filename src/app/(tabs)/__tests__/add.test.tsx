@@ -169,12 +169,117 @@ describe('Add tab, the form', () => {
   it('refuses a phone number nobody could dial', async () => {
     await renderSignedIn();
     const user = await fillRequired();
+    await user.press(screen.getByRole('button', { name: 'Add contact details, optional' }));
     await user.type(screen.getByLabelText('Phone (optional)'), 'open 7 days');
 
     await user.press(screen.getByRole('button', { name: 'Continue to the map' }));
 
     expect(screen.getByText('That doesn’t look like a phone number.')).toBeOnTheScreen();
     expect(geocodeAddress).not.toHaveBeenCalled();
+  });
+});
+
+describe('Add tab, contact details', () => {
+  const button = (name: string | RegExp) => screen.getByRole('button', { name });
+
+  it('starts folded away under one toggle, after the photos', async () => {
+    await renderSignedIn();
+
+    expect(screen.queryByLabelText('Phone (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Website (optional)')).toBeNull();
+    expect(screen.queryByLabelText('Social page (optional)')).toBeNull();
+    expect(button('Add contact details, optional')).toBeCollapsed();
+    expect(screen.getByText('Step 1 of 2 — Place details')).toBeOnTheScreen();
+
+    // The required fields, their photos, then the toggle, then Continue.
+    const buttons = screen.getAllByRole('button').map((node) => node.props.accessibilityLabel);
+    expect(buttons.slice(-3)).toEqual([
+      'Add photos',
+      'Add contact details, optional',
+      'Continue to the map',
+    ]);
+  });
+
+  it('opens, counts what is written, and keeps it through a collapse', async () => {
+    await renderSignedIn();
+    const user = userEvent.setup();
+
+    await user.press(button('Add contact details, optional'));
+    expect(button('Add contact details, optional')).toBeExpanded();
+
+    await user.type(screen.getByLabelText('Phone (optional)'), 'not a number');
+    await user.type(screen.getByLabelText('Website (optional)'), '   ');
+    expect(button('Contact details, 1 added')).toBeOnTheScreen();
+    expect(screen.getByText('Contact details · 1 added')).toBeOnTheScreen();
+
+    await user.type(screen.getByLabelText('Social page (optional)'), 'facebook.com/casa');
+    await user.press(button('Contact details, 2 added'));
+    expect(screen.queryByLabelText('Phone (optional)')).toBeNull();
+    expect(button('Contact details, 2 added')).toBeCollapsed();
+
+    await user.press(button('Contact details, 2 added'));
+    expect(screen.getByLabelText('Phone (optional)').props.value).toBe('not a number');
+    expect(screen.getByLabelText('Social page (optional)').props.value).toBe('facebook.com/casa');
+  });
+
+  it('says it is empty again once cleared, without folding away', async () => {
+    await renderSignedIn();
+    const user = userEvent.setup();
+
+    await user.press(button('Add contact details, optional'));
+    await user.type(screen.getByLabelText('Phone (optional)'), '313');
+    await user.clear(screen.getByLabelText('Phone (optional)'));
+
+    expect(button('Add contact details, optional')).toBeExpanded();
+    expect(screen.getByLabelText('Phone (optional)')).toBeOnTheScreen();
+  });
+
+  it('opens itself when Continue finds a problem inside it', async () => {
+    await renderSignedIn();
+    const user = await fillRequired();
+    await user.press(button('Add contact details, optional'));
+    await user.type(screen.getByLabelText('Website (optional)'), 'not a site');
+    await user.press(button('Contact details, 1 added'));
+
+    await user.press(button('Continue to the map'));
+
+    expect(button('Contact details, 1 added')).toBeExpanded();
+    expect(screen.getByText('That doesn’t look like a web address.')).toBeOnTheScreen();
+    expect(geocodeAddress).not.toHaveBeenCalled();
+  });
+
+  it('comes back from the pin as it was left', async () => {
+    await renderSignedIn();
+    const user = await fillRequired();
+    await user.press(button('Add contact details, optional'));
+    await user.type(screen.getByLabelText('Phone (optional)'), '(313) 555-0100');
+
+    await user.press(button('Continue to the map'));
+    await screen.findByText('Confirm the pin');
+    expect(screen.getByText('Step 2 of 2 — Confirm location')).toBeOnTheScreen();
+    await user.press(button('Edit details'));
+
+    expect(button('Contact details, 1 added')).toBeExpanded();
+    expect(screen.getByLabelText('Phone (optional)').props.value).toBe('(313) 555-0100');
+    expect(screen.getByText('Step 1 of 2 — Place details')).toBeOnTheScreen();
+  });
+
+  it('counts in Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    currentUser.mockResolvedValue(ana);
+    await render(
+      <Providers>
+        <AddScreen />
+      </Providers>
+    );
+    const user = userEvent.setup();
+
+    await user.press(await screen.findByRole('button', { name: 'Adaugă date de contact, opțional' }));
+    expect(screen.getByText('Pasul 1 din 2 — Detaliile locului')).toBeOnTheScreen();
+    await user.type(screen.getByLabelText('Telefon (opțional)'), '313');
+    expect(button('Date de contact, 1 câmp completat')).toBeOnTheScreen();
+    await user.type(screen.getByLabelText('Site web (opțional)'), 'casa.ro');
+    expect(button('Date de contact, 2 câmpuri completate')).toBeOnTheScreen();
   });
 });
 

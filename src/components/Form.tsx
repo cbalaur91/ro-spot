@@ -12,14 +12,19 @@ import { colors } from '@/theme';
  * so that a screen with one text field doesn't import a map to get it.
  */
 
-/** The page header every step keeps, and the band under it. */
+/**
+ * The page header every step keeps, and the band under it. `step` says where a
+ * multi-step form is, beneath the subtitle, as the muted eyebrow (§3).
+ */
 export function FormHeader({
   title,
   subtitle,
+  step,
   back,
 }: {
   title: string;
   subtitle: string;
+  step?: string;
   back?: { label: string; onPress: () => void };
 }) {
   return (
@@ -42,10 +47,43 @@ export function FormHeader({
           <Text className="text-[12.5px] text-muted" numberOfLines={2}>
             {subtitle}
           </Text>
+          {step ? (
+            <Text
+              // Sentence-case for the reader; the class uppercases only what is drawn.
+              accessibilityLabel={step}
+              className="mt-1 text-[11px] font-semibold uppercase leading-4 tracking-[1.5px] text-muted"
+            >
+              {step}
+            </Text>
+          ) : null}
         </View>
       </View>
       <StarBand height={14} />
     </>
+  );
+}
+
+/**
+ * The form-label mark: `11px` semibold ink, uppercased by class, with an
+ * optional normal-weight muted suffix. Stored sentence-case, and read that way.
+ */
+export function FormLabel({
+  label,
+  suffix,
+  ...props
+}: { label: string; suffix?: string } & React.ComponentProps<typeof Text>) {
+  return (
+    <Text
+      // Sentence-case for the reader; the class uppercases only what is drawn.
+      accessibilityLabel={suffix ? `${label}, ${suffix}` : label}
+      className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink"
+      {...props}
+    >
+      {label}
+      {suffix ? (
+        <Text className="font-normal normal-case tracking-normal text-muted">{` · ${suffix}`}</Text>
+      ) : null}
+    </Text>
   );
 }
 
@@ -76,18 +114,12 @@ export function Field({
 
   return (
     <View className="gap-1.5">
-      <Text
+      <FormLabel
+        label={label}
+        suffix={suffix}
         accessibilityElementsHidden={!spoken}
         importantForAccessibility={spoken ? 'auto' : 'no'}
-        // Sentence-case for the reader; the class uppercases only what is drawn.
-        accessibilityLabel={suffix ? `${label}, ${suffix}` : label}
-        className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink"
-      >
-        {label}
-        {suffix ? (
-          <Text className="font-normal normal-case tracking-normal text-muted">{` · ${suffix}`}</Text>
-        ) : null}
-      </Text>
+      />
       {children}
       {problem ? (
         <Text accessibilityLiveRegion="polite" className="text-[11.5px] text-cherry">

@@ -2,6 +2,7 @@ import type { Place } from '@/data/places';
 
 import {
   checkDraft,
+  contactCount,
   draftFromPlace,
   EMPTY_DRAFT,
   fitWithin,
@@ -99,6 +100,22 @@ describe('checkDraft', () => {
         socialUrl: 'socialUnusable',
       },
     });
+  });
+});
+
+describe('contactCount', () => {
+  it('is nothing for a draft with no contact details', () => {
+    expect(contactCount(EMPTY_DRAFT)).toBe(0);
+  });
+
+  it('counts what was written, not whitespace', () => {
+    expect(contactCount({ ...EMPTY_DRAFT, phone: '   ', website: 'casa.ro' })).toBe(1);
+  });
+
+  // The toggle says what the section holds; whether it's usable is Continue's
+  // business, and a count that dropped a typo would hide it behind a collapse.
+  it('counts a field whether or not it would pass the check', () => {
+    expect(contactCount({ ...EMPTY_DRAFT, phone: 'open 7 days', website: 'x', socialUrl: 'y' })).toBe(3);
   });
 });
 

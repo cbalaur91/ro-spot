@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/CategoryChips';
-import { Field, FormHeader, Input, PrimaryPill } from '@/components/Form';
+import { Field, FormHeader, FormLabel, Input, PrimaryPill } from '@/components/Form';
 import { PinMap } from '@/components/PinMap';
 import type { Coords } from '@/geo';
 import { geocodeAddress } from '@/geocode';
@@ -23,6 +23,8 @@ import { pickPhotos } from '@/photos';
 import { CATEGORIES } from '@/state/categoryFilter';
 import {
   checkDraft,
+  CONTACT_FIELDS,
+  contactCount,
   LIMITS,
   type DraftFields,
   type DraftPhoto,
@@ -98,6 +100,42 @@ function Photos({
   );
 }
 
+/**
+ * The toggle the three optional contact fields fold under. Drawn as a form
+ * label — the section is a field of the form, not an action on it — with the
+ * suffix saying whether anything is inside, and a muted chevron for which way
+ * it will go.
+ */
+function ContactToggle({
+  count,
+  isOpen,
+  onPress,
+}: {
+  count: number;
+  isOpen: boolean;
+  onPress: () => void;
+}) {
+  const { t } = useTranslation();
+  const label = count > 0 ? t('add.contact.title') : t('add.contact.add');
+  const suffix = count > 0 ? t('add.contact.added', { count }) : t('add.optional');
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      // Sentence-case for the reader; the class uppercases only what is drawn.
+      accessibilityLabel={`${label}, ${suffix}`}
+      accessibilityState={{ expanded: isOpen }}
+      onPress={onPress}
+      className="min-h-[44px] flex-row items-center justify-between gap-2 active:opacity-70"
+    >
+      <View className="flex-1">
+        <FormLabel label={label} suffix={suffix} />
+      </View>
+      <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
+    </Pressable>
+  );
+}
+
 export type PlaceEditorProps = {
   /** What the form starts as: an empty draft, or a place the author already has. */
   initial: PlaceDraft;
@@ -151,6 +189,9 @@ export function PlaceEditor({
   const [isPicking, setIsPicking] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  // Open from the start only when there is something in it already — an edit
+  // of a place with a phone number shouldn't hide the number it's there to fix.
+  const [showContact, setShowContact] = useState(() => contactCount(initial) > 0);
 
   /** One field changed — and whatever was wrong with it is no longer known to be. */
   function editWith<K extends keyof PlaceDraft>(
@@ -186,6 +227,10 @@ export function PlaceEditor({
     const check = checkDraft(draft);
     if (!check.ok) {
       setProblems(check.problems);
+      // A problem nobody can see is one nobody can fix.
+      if (CONTACT_FIELDS.some((field) => check.problems[field])) {
+        setShowContact(true);
+      }
       return;
     }
 
@@ -238,6 +283,7 @@ export function PlaceEditor({
         <FormHeader
           title={t('add.pin.title')}
           subtitle={step.fields.address}
+          step={t('add.steps.pin')}
           back={busy ? undefined : { label: t('add.pin.edit'), onPress: () => setStep({ at: 'form' }) }}
         />
         <View className="flex-1">
@@ -278,7 +324,7 @@ export function PlaceEditor({
 
   return (
     <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-      <FormHeader title={title} subtitle={subtitle} back={back} />
+      <FormHeader title={title} subtitle={subtitle} step={t('add.steps.details')} back={back} />
       <KeyboardAvoidingView
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -336,43 +382,6 @@ export function PlaceEditor({
             />
           </Field>
 
-          <Field label={t('add.fields.phone')} suffix={t('add.optional')} problem={problems.phone}>
-            <Input
-              accessibilityLabel={optional('phone')}
-              keyboardType="phone-pad"
-              autoComplete="tel"
-              {...text('phone')}
-            />
-          </Field>
-
-          <Field
-            label={t('add.fields.website')}
-            suffix={t('add.optional')}
-            problem={problems.website}
-          >
-            <Input
-              accessibilityLabel={optional('website')}
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-              {...text('website')}
-            />
-          </Field>
-
-          <Field
-            label={t('add.fields.socialUrl')}
-            suffix={t('add.optional')}
-            problem={problems.socialUrl}
-          >
-            <Input
-              accessibilityLabel={optional('socialUrl')}
-              keyboardType="url"
-              autoCapitalize="none"
-              autoCorrect={false}
-              {...text('socialUrl')}
-            />
-          </Field>
-
           <Field
             label={t('add.fields.photos')}
             suffix={t('add.photosRule')}
@@ -388,6 +397,58 @@ export function PlaceEditor({
               }
             />
           </Field>
+
+          <View className="gap-[14px]">
+            <ContactToggle
+              count={contactCount(draft)}
+              isOpen={showContact}
+              onPress={() => setShowContact((isOpen) => !isOpen)}
+            />
+            {showContact ? (
+              <>
+                <Field
+                  label={t('add.fields.phone')}
+                  suffix={t('add.optional')}
+                  problem={problems.phone}
+                >
+                  <Input
+                    accessibilityLabel={optional('phone')}
+                    keyboardType="phone-pad"
+                    autoComplete="tel"
+                    {...text('phone')}
+                  />
+                </Field>
+
+                <Field
+                  label={t('add.fields.website')}
+                  suffix={t('add.optional')}
+                  problem={problems.website}
+                >
+                  <Input
+                    accessibilityLabel={optional('website')}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    {...text('website')}
+                  />
+                </Field>
+
+                <Field
+                  label={t('add.fields.socialUrl')}
+                  suffix={t('add.optional')}
+                  problem={problems.socialUrl}
+                >
+                  <Input
+                    accessibilityLabel={optional('socialUrl')}
+                    keyboardType="url"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    {...text('socialUrl')}
+                  />
+                </Field>
+              </>
+            ) : null}
+          </View>
 
           <View className="mt-1">
             <PrimaryPill label={t('add.continue')} busy={busy} onPress={toThePin} />

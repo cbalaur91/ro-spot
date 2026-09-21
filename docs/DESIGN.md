@@ -249,10 +249,12 @@ Uppercase, semibold, `tracking-[1.5px]`, in the category tint.
 - `11px` on the detail screen, `leading-4` — the same eyebrow at the scale of a screen
   rather than a row
 - `muted` instead of a tint when the eyebrow labels a field rather than a category (the
-  contact rows)
+  contact rows), or says where a form is rather than what a place is (the Add form's step
+  line, §4.5)
 
-Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink`. Use them
-only above an input or a group (§4.5, §4.8).
+Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink` —
+`FormLabel` in `src/components/Form.tsx`. Use them only above an input or a group, or as the
+toggle that folds a group away (§4.5's contact details, §4.8).
 
 ### Pills
 
@@ -392,6 +394,8 @@ The restyle costs a screen reader nothing, and neither should the next change.
   where the text inside it wouldn't do.
 - A List card's actions are links, siblings of the body, each named with its place. The
   detail screen's Directions and Call pills reuse those names.
+- A disclosure is a button with `accessibilityState={{ expanded }}`, labelled with what it
+  holds rather than what it does (§4.5's contact details), and at least 44 tall.
 - Touch targets reach 44 through padding, not `hitSlop`, where the control hangs off an
   absolutely positioned parent — Android clips touch at a parent's bounds.
 
@@ -652,7 +656,11 @@ clears it.
 Every step keeps the **page header** at the 24 gutter — `text-[24px] font-bold
 tracking-[-0.4px]` title over a `text-[12.5px] text-muted` subtitle (`add.subtitle`: the
 moderation queue is stated up front, not after submitting) — and the 14px star band edge to
-edge under it.
+edge under it. Under the subtitle, `mt-1`, the step in the muted eyebrow (§3: `text-[11px]
+font-semibold uppercase leading-4 tracking-[1.5px] text-muted`, sentence-case
+`accessibilityLabel`):
+`add.steps.details`, "Step 1 of 2 — Place details", on the form, and `add.steps.pin`, "Step
+2 of 2 — Confirm location", on the pin. The done state has none — it isn't a step.
 
 **Reading the session / anonymous** — as Profile (§4.8): `Loading` first, so the gate never
 flashes at someone already signed in, then the invitation at the 40 measure with a primary
@@ -661,10 +669,23 @@ account.
 
 **Form** — a `ScrollView` at the 24 gutter, `gap: 14`, `paddingVertical: 18`,
 `keyboardShouldPersistTaps="handled"`. Fields in order: **NAME, CATEGORY, ADDRESS,
-DESCRIPTION, PHONE, WEBSITE, SOCIAL PAGE, PHOTOS** — name first because it is the one thing
-the submitter certainly knows, photos last because choosing them leaves the app, and the
-three optional fields between the prose and the photos so they never stand between someone
-and the required ones.
+DESCRIPTION, PHOTOS**, then the **contact details** disclosure, then Continue — name first
+because it is the one thing the submitter certainly knows, and every required field before
+the optional ones, so the form looks as short as what it asks for.
+
+**Contact details** — phone, website and social page fold under one toggle, drawn as a form
+label rather than a button: a `Pressable` row, `min-h-[44px] flex-row items-center
+justify-between gap-2`, the label in the form-label mark with its normal-weight muted
+suffix, and a 16px `chevron-down` / `chevron-up` in muted at the right. It reads "ADD CONTACT
+DETAILS · optional" while all three are blank and "CONTACT DETAILS · 2 added" once any holds
+something (`add.contact.*`; Romanian counts `câmp` / `câmpuri`) — trimmed and non-blank,
+valid or not, so a typo never hides behind "optional". `accessibilityRole="button"`,
+`accessibilityState={{ expanded }}`, labelled sentence-case `"{label}, {suffix}"`. The three
+fields sit under it at the form's `gap: 14` when open, unchanged from before. It starts
+closed on a blank draft and open on one that already has contact details (an edit, §4.9).
+Closing it keeps every value; clearing all three changes the label back but leaves it open;
+**Continue** opens it when a problem is inside — a problem nobody can see is one nobody can
+fix. Open or closed, it survives the round trip to the pin.
 
 Each field is a label over a control, `gap-1.5`. The label is the form-label mark (§3),
 stored sentence-case and uppercased by class. Over a text input it is **hidden from screen
@@ -910,7 +931,12 @@ Deliberate, and not to be "fixed" back:
   form's pill is "Continue to the map" and "Submit for review" closes the pin — an action
   keeps one name, and it belongs to the button that performs it.
 - **The Add form has three optional fields the canvas doesn't.** Phone, website and social
-  page are v1 spec fields; they sit between the description and the photos.
+  page are v1 spec fields; they fold under one "Add contact details · optional" toggle after
+  the photos, so the form the canvas draws is still the form a first-time submitter sees.
+  #33.
+- **The Add form says which step it is on.** The canvas's form is one step and needs no
+  counter; with the pin as a second step, a muted eyebrow under the header says "Step 1 of
+  2" and "Step 2 of 2". #33.
 - **The Add form has no hatched tile.** The canvas fills an empty or loading photo tile with
   a 45° hatch. There are no empty tiles — the row is what was chosen, then the add tile —
   and the one loading state is the add tile's own spinner.

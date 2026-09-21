@@ -57,6 +57,18 @@ export function draftFromPlace(place: Place, photoUrl: (path: string) => string)
   };
 }
 
+/** The optional fields the form folds under "contact details". */
+export const CONTACT_FIELDS = ['phone', 'website', 'socialUrl'] as const;
+
+/**
+ * How many of the optional contact fields hold something. Written is written:
+ * a field that won't pass `checkDraft` still counts, so the toggle over the
+ * folded fields never says "nothing here" about a typo waiting inside.
+ */
+export function contactCount(draft: PlaceDraft): number {
+  return CONTACT_FIELDS.filter((field) => draft[field].trim()).length;
+}
+
 /**
  * The `places` table's own ceilings. The inputs carry them as `maxLength`, so
  * "too long" is a thing the form prevents rather than a thing it complains about.
