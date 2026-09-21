@@ -2,11 +2,16 @@
  * The Add form's rules, with nothing in them that needs a device: what a draft
  * has to have before it may be sent, and how big a photo is allowed to stay.
  */
-import type { PlaceCategory } from '@/data/places';
+import type { Place, PlaceCategory } from '@/data/places';
 import { telUrl, webUrl } from '@/links';
 
-/** A photo the form is holding: chosen, compressed, not yet uploaded. */
-export type DraftPhoto = { uri: string };
+/**
+ * A photo the form is holding. `uri` is where it can be drawn from — a file on
+ * the device for one just chosen, the bucket's public URL for one an edit
+ * started with. `path` is set only for the second kind, and is what saves it
+ * from being downloaded and uploaded again to end up where it already is.
+ */
+export type DraftPhoto = { uri: string; path?: string };
 
 /** The form as the person is typing it — every text field a string, nothing trimmed. */
 export type PlaceDraft = {
@@ -30,6 +35,27 @@ export const EMPTY_DRAFT: PlaceDraft = {
   socialUrl: '',
   photos: [],
 };
+
+/**
+ * A place the author already submitted, as a form to change.
+ *
+ * `photoUrl` is passed in rather than imported: this module is the form's rules
+ * and stays clear of `src/data`, so nothing here has to know which bucket a
+ * photo is in — or drag a Supabase client into a unit test.
+ */
+export function draftFromPlace(place: Place, photoUrl: (path: string) => string): PlaceDraft {
+  return {
+    name: place.name,
+    category: place.category,
+    address: place.address,
+    description: place.description,
+    // An input holds a string; a field nobody filled in is empty, not "null".
+    phone: place.phone ?? '',
+    website: place.website ?? '',
+    socialUrl: place.social_url ?? '',
+    photos: place.photo_paths.map((path) => ({ uri: photoUrl(path), path })),
+  };
+}
 
 /**
  * The `places` table's own ceilings. The inputs carry them as `maxLength`, so

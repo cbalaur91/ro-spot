@@ -24,3 +24,4 @@
 - Don't size an image from `ImagePickerAsset.width/height` — they may be 0. Decode with the manipulator and read the dimensions off the rendered image.
 - A callback handed to a map/gesture (`onChange={(c) => setStep({ ...step, c })}`) closes over the render's state and can fire after the flow moved on; use a functional update guarded on the state it expects.
 - Expo Go on Android cannot verify the map: its shared Google Maps key fails auth (react-native-maps #5888), so `MapView` renders black/blank with only the Google logo while everything around it works. Map tiles, pins and the pin drag need a development build with our own `GOOGLE_MAPS_ANDROID_API_KEY` — don't debug app code over a black map in Expo Go.
+- Don't give test fixtures a long shared name prefix when the thing under test compares names: a suite stamp in every row made unrelated places "similar" and the duplicate check flagged the suite against itself.

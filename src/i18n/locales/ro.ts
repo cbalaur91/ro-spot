@@ -95,6 +95,19 @@ export default {
     signIn: 'Intră în cont',
     signOut: 'Ieși din cont',
     signOutFailed: 'Nu am putut să te deconectez. Încearcă din nou.',
+    places: {
+      label: 'Locurile tale',
+      hint: 'Dacă modifici un loc, se întoarce la verificare.',
+      loading: 'Se încarcă locurile tale',
+      failed: 'Locurile tale nu au putut fi încărcate.',
+      empty: 'Locurile pe care le adaugi apar aici.',
+      status: {
+        pending: 'În așteptare',
+        approved: 'Aprobat',
+        rejected: 'Neacceptat',
+      },
+      edit: 'Modifică',
+    },
   },
   add: {
     title: 'Adaugă un loc',
@@ -154,5 +167,15 @@ export default {
       hint: 'Apare pe hartă după ce e aprobat — hora are un dansator în plus.',
       again: 'Adaugă încă un loc',
     },
+  },
+  edit: {
+    title: 'Modifică locul tău',
+    subtitle: 'Când salvezi, locul se întoarce la verificare',
+    back: 'Înapoi la locurile tale',
+    loading: 'Se încarcă locul',
+    failed: 'Locul nu a putut fi încărcat.',
+    notFound: 'Acest loc nu este al tău ca să îl modifici.',
+    save: 'Salvează și trimite spre verificare',
+    saveFailed: 'Locul nu a fost salvat. Verifică conexiunea și încearcă din nou.',
   },
 } as const;

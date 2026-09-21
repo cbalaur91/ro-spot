@@ -1,6 +1,8 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 
+import type { Place } from '@/data/places';
 import i18n from '@/i18n';
 import { SessionProvider } from '@/state/session';
 
@@ -15,6 +17,10 @@ jest.mock('@/data/auth', () => ({
   signOut: jest.fn(),
 }));
 
+// The same treatment for "your places": the read is the seam, the block under
+// test is what the tab makes of what comes back.
+jest.mock('@/data/submissions', () => ({ fetchMyPlaces: jest.fn() }));
+
 // `mock`-prefixed so Jest lets the factory close over it.
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 
@@ -25,6 +31,29 @@ const { currentUser, onAuthChange, signOut } = jest.requireMock('@/data/auth') a
   onAuthChange: jest.Mock;
   signOut: jest.Mock;
 };
+
+const { fetchMyPlaces } = jest.requireMock('@/data/submissions') as { fetchMyPlaces: jest.Mock };
+
+/** A place of Ana's, as the table hands it over. */
+function place(overrides: Partial<Place> = {}): Place {
+  return {
+    id: 'p1',
+    name: 'Casa Românească',
+    category: 'food_drink',
+    description: 'Sarmale like at home.',
+    address: '1 Main St, Southfield, MI 48075',
+    lat: 42.4576,
+    lng: -83.2409,
+    status: 'pending',
+    author_id: 'u1',
+    phone: null,
+    website: null,
+    social_url: null,
+    photo_paths: ['u1/one.jpg'],
+    created_at: '2026-09-01T00:00:00Z',
+    ...overrides,
+  };
+}
 
 const ana = { id: 'u1', email: 'ana.pop@example.com' };
 
@@ -39,13 +68,22 @@ async function emitAuthChange(user: unknown) {
   });
 }
 
+let queryClient: QueryClient;
+
 async function renderScreen(ui: ReactElement) {
-  return render(<SessionProvider>{ui}</SessionProvider>);
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>{ui}</SessionProvider>
+    </QueryClientProvider>
+  );
 }
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // `gcTime: 0` — react-query's default gc timer outlives the test run.
+  queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
   onAuthChange.mockReturnValue(jest.fn());
+  fetchMyPlaces.mockResolvedValue([]);
   await i18n.changeLanguage('en');
 });
 
@@ -130,5 +168,88 @@ describe('Profile tab', () => {
       expect(screen.getByText('Ca să te uiți, nu ai nevoie de cont.')).toBeOnTheScreen()
     );
     expect(screen.getByText('Profil')).toBeOnTheScreen();
+  });
+});
+
+describe('Profile tab, your places', () => {
+  beforeEach(() => {
+    currentUser.mockResolvedValue(ana);
+  });
+
+  it('lists what you sent in, and what became of each one', async () => {
+    fetchMyPlaces.mockResolvedValue([
+      place({ id: 'p1', name: 'Casa Românească', status: 'pending' }),
+      place({ id: 'p2', name: 'Europa Market', status: 'approved', category: 'services' }),
+      place({ id: 'p3', name: 'Dracula’s Bakery', status: 'rejected' }),
+    ]);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Casa Românească')).toBeOnTheScreen();
+    expect(screen.getByText('Pending')).toBeOnTheScreen();
+    expect(screen.getByText('Approved')).toBeOnTheScreen();
+    // Not "Rejected": the word the moderator's decision earns is the softer one.
+    expect(screen.getByText('Not accepted')).toBeOnTheScreen();
+    // The card says where, not the whole envelope.
+    expect(screen.getAllByText('Southfield, MI')).toHaveLength(3);
+  });
+
+  it('says the rule before an edit can surprise anybody', async () => {
+    fetchMyPlaces.mockResolvedValue([place()]);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Edit a place and it goes back for review.')).toBeOnTheScreen();
+  });
+
+  it('opens a place for editing when its card is pressed', async () => {
+    fetchMyPlaces.mockResolvedValue([place({ id: 'p7' })]);
+
+    await renderScreen(<ProfileScreen />);
+    await userEvent.press(await screen.findByRole('button', { name: /Casa Românească/ }));
+
+    expect(mockPush).toHaveBeenCalledWith('/edit/p7');
+  });
+
+  it('invites a first submission rather than showing an empty box', async () => {
+    fetchMyPlaces.mockResolvedValue([]);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Places you add show up here.')).toBeOnTheScreen();
+  });
+
+  it('offers to try again when the read fails', async () => {
+    fetchMyPlaces.mockRejectedValueOnce(new Error('offline'));
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Your places could not be loaded.')).toBeOnTheScreen();
+
+    fetchMyPlaces.mockResolvedValue([place()]);
+    await userEvent.press(screen.getByRole('button', { name: 'Try again' }));
+
+    expect(await screen.findByText('Casa Românească')).toBeOnTheScreen();
+  });
+
+  it('does not ask for a stranger’s places', async () => {
+    // Nobody is signed in, so there is nothing of theirs to read — and asking
+    // anonymously would only come back empty.
+    currentUser.mockResolvedValue(null);
+
+    await renderScreen(<ProfileScreen />);
+
+    await waitFor(() => expect(screen.getByText('Browsing needs no account.')).toBeOnTheScreen());
+    expect(fetchMyPlaces).not.toHaveBeenCalled();
+  });
+
+  it('speaks Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    fetchMyPlaces.mockResolvedValue([place({ status: 'approved' })]);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Locurile tale')).toBeOnTheScreen();
+    expect(screen.getByText('Aprobat')).toBeOnTheScreen();
   });
 });

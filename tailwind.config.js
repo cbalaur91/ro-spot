@@ -24,6 +24,7 @@ module.exports = {
         'gold-dark': '#B07C1F',
         'badge-pending': '#F7EFDD',
         'badge-approved': '#E8EEE9',
+        'badge-rejected': '#F6E7E9',
         'map-land': '#ECE7DC',
         'map-shade': '#E9E4DA',
       },

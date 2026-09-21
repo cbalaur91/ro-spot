@@ -954,3 +954,132 @@ dancer is the band contract (§2), left alone.
 large photo (the emulator's test image was small), camera-sourced photos, anything iOS. The
 APK is x86_64-only — the owner's phone needs an arm64 build. #21 can close on the map evidence
 above once the owner agrees.
+
+## Issue #8 — My places, author edit re-enters review, duplicate flag
+
+Covers Phase 3 step 12 and the "my places" block of step 13. Verified in Jest (unit + component),
+integration suites against the live `rospot` project, and the Android export.
+
+- [x] A. Migration `your_places`: author select-own policy; column-level `update` grant to
+      `authenticated` (content columns only — never `status`, `author_id`, `created_at`); author
+      update policy (own row, ≥1 photo, own-folder paths); `before update` trigger that sets
+      `status = 'pending'` for any client-role edit; `pg_trgm` + `unaccent`; helper
+      `places_look_alike(name, lat, lng, name, lat, lng)` (≤150 m haversine and trigram
+      similarity ≥ 0.45 on unaccented lower-case names — threshold measured on 11 real-shaped
+      pairs); moderator-only `place_duplicate_flags` table (RLS on, no policies) filled by a
+      `security definer` after-insert trigger → verified: suite red first (17 failures), then
+      `supabase db push --linked` applied and `gen types` regenerated
+- [x] B. Integration suite `your-places.integration.test.ts`: author reads own pending, a stranger
+      doesn't; author edit of an approved place → pending, gone from `fetchApprovedPlaces` /
+      `fetchPlace`; author can't write `status` directly, can't edit another's place; moderator
+      approval is not reset by the trigger; helper table-driven (`admin.rpc`); a near similarly-named
+      insert gets a flag against the seed, a far or differently-named one doesn't; flags invisible
+      to the author → verified: 24 assertions green against `rospot`, throwaway users, rows and
+      objects deleted
+- [x] C. `src/data/submissions.ts`: `fetchMyPlaces()`, `updatePlace(id, edit)` (kept paths +
+      new JPEGs, uploads shared with `submitPlace`, throws when 0 rows updated) → verify: via B
+- [x] D. Pure helpers, TDD: `locality(address)` for the card line; `draftFromPlace(place)`;
+      `DraftPhoto` gains an optional stored `path` → verify: unit tests
+- [x] E. Extract the Add form + pin step into `src/components/PlaceEditor.tsx`; Add keeps gate +
+      done → verified: the Add suite's 13 assertions are unchanged; its render helper gained a
+      `QueryClientProvider`, which the submit-time cache invalidation genuinely needs
+- [x] F. `useMyPlaces()` + Profile "Your places" block (§4.8 cards, PENDING / APPROVED / REJECTED
+      badges, loading / failed / empty); Add invalidates it on submit → verify: profile suite
+- [x] G. `src/app/edit/[id].tsx`: prefilled editor, unchanged address skips the geocode and keeps
+      the pin, save → invalidate + back → verify: component suite (kept paths, re-pending copy)
+- [x] H. RO + EN copy; `badgeRejected` token (theme + tailwind); DESIGN.md §4.8 / new edit
+      screen / §5 → verify: palette test, both-locale assertions
+- [x] I. Gates → verified: `bun run typecheck` and `bun run lint` clean, `npm test` 347 green
+      (was 310), `npx expo export --platform android` bundles at 5.4MB
+- [x] J. Emulator pass on the AVD `rospot` against the live project → verified: submit → the card
+      appears under YOUR PLACES as PENDING with no restart; moderator approval (as `postgres`) is
+      *not* re-pended by the trigger and reads APPROVED; the card opens the prefilled edit form
+      with its stored photo; an untouched address skips the geocoder; save → PENDING again and the
+      place is gone from the List in the same session; `rejected` reads NOT ACCEPTED in its cherry
+      tint. Screenshots in `~/.cache/rospot-shots/`. Test place and photo deleted; the emulator's
+      standing account was kept
+- [ ] K. `/code-review`, fix, commit
+
+### Review — #8 (2026-09-20)
+
+Shipped: "your places" on the Profile tab with a status badge per submission, an edit screen
+that is the Add form prefilled, and a moderator-facing duplicate hint. 347 tests green (was
+310), typecheck and lint clean, the Android bundle exports, and the whole flow was driven on
+the `rospot` emulator against the live project.
+
+**The rules are the database's.** An author's edit re-enters review because `authenticated`
+holds no `update` privilege on `status` (a column-level grant lists exactly the content
+columns) and a `before update` trigger writes `pending` for any edit arriving as a client
+role. The trigger skips `postgres` and `service_role`, so the moderator's approval in the
+dashboard is not undone by the same rule — which the suite asserts both ways. The client
+could be wrong about all of this and the queue would still hold.
+
+**The duplicate hint is a table, not a column.** `place_duplicate_flags` has RLS on and no
+policy, so no client role can read it at all; `select *` is how every screen reads a place,
+and a hint about somebody else's pending submission is not the submitter's business. An
+after-insert `security definer` trigger fills it, because the submitter cannot see what they
+might be duplicating — another pending submission is invisible to them, which is exactly the
+case worth flagging. Similarity is `pg_trgm` over unaccented lower case at 0.45, and the
+threshold is a measurement rather than a guess: five pairs that are the same place said
+differently score 0.53–1.00, five pairs that are different places at one address score
+0.00–0.33, and the suite is that table.
+
+**One form, two screens.** `PlaceEditor` is the Add tab's form and pin step, lifted out
+whole; the tab keeps its gate and its done state, and the edit screen supplies a header, a
+pill and what to do after the save. A photo already in the bucket travels back as its path
+rather than being downloaded and re-uploaded to end up where it already is, which is the one
+thing `DraftPhoto` gained. An address nobody touched skips the geocoder — geocoding it again
+would move a place that only had its description fixed.
+
+Deviations and things still owed:
+- **Approval doesn't reach a running app.** The Profile tab refetches when the app starts, on
+  submit and on save, but a place approved while the app is open keeps reading PENDING until
+  the next launch. Worth an app-state refetch if it bothers anyone; not worth polling.
+- **Removed photos stay in the bucket.** There is still no delete policy on purpose (#7), so
+  an edit that drops a photo orphans the object until account deletion (#10) clears the
+  folder.
+- **The duplicate check runs on insert only**, as the issue asks. An edit that renames a place
+  onto somebody else's is not flagged — the moderator sees it again anyway.
+
+Changed after the two-axis code review:
+- **An edit aimed at somebody else's place used to upload first and refuse afterwards**, and
+  uploads cannot be taken back — there is no delete policy. `updatePlace` now reads the row's
+  author before the photos go up. The policy is still what decides; this only spares the
+  bucket the litter.
+- **A moderator-facing view**, `place_duplicate_review`: the flags table carries two ids,
+  which is all the trigger knows, and a hint that has to be joined by hand for every row is a
+  hint nobody reads. The view is `security_invoker`, so it is not a way around the policies
+  under it, and it is revoked from both client roles anyway.
+- **The cache invalidations are no longer awaited.** A save that landed was being reported as
+  a failure if the refetch behind it was slow or came back an error.
+- **`onSaved` moved out of the save's `try`**: navigating away is not part of saving, and a
+  throw from it was drawn as "the place was not saved".
+- `fetchMyPlaces` and `signedInUserId` read the session through one function now.
+
+Reviewed and deliberately kept:
+- **The unit test for the similarity helper is the integration suite's table.** The helper is
+  SQL — `pg_trgm` over `unaccent` — and the only honest unit test for it runs against a
+  database. A TypeScript reimplementation to test in Jest would be a second algorithm that
+  can drift from the one the trigger actually calls. The cost is real and known: a clone
+  without credentials has no coverage of the 0.45 threshold.
+- **The 1–5 photo ceiling is not in the update policy** because it is already a table
+  constraint (`places_photo_paths_max`, from the photos migration), which no policy can be
+  written around. Only the floor of one is policy-side, because a seeded place may have none.
+- **`src/address.ts` is not scope creep**: DESIGN §4.8 specifies the card as a name over a
+  locality, and the row carries an address.
+- **The form's copy stays under `add.*`.** The edit screen *is* the Add form (§4.9); giving
+  the shared fields a second namespace would be two places to change one label.
+- **The edit screen reads its place out of "your places"** rather than fetching by id. It is
+  reached from a card on that list, so the rows are already there; a deep link to
+  `/edit/<id>` fetches the author's places once, which is the same query the Profile tab
+  makes anyway.
+
+Follow-ups worth an issue:
+- A place approved while the app is open keeps reading PENDING until the next launch. An
+  app-state refetch would fix it; polling would not be worth it.
+- `flag_duplicate_place` scans every place per insert — the similarity call is not sargable.
+  Fine at seed scale, and the place to look if submissions ever get slow.
+- The duplicate check is insert-only, so renaming a place onto somebody else's is not
+  flagged. The moderator sees the edit again regardless.
+- `return_place_to_review()` is the one function in the migration without a
+  `revoke execute` — harmless for a trigger function, inconsistent with the file's hygiene.

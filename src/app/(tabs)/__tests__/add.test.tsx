@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 
 import { DEFAULT_ORIGIN } from '@/geo';
@@ -45,12 +46,26 @@ const GEOCODED = { lat: 42.4576, lng: -83.2409 };
 const photo = (n: number) => ({ uri: `file:///photo-${n}.jpg` });
 const BYTES = new ArrayBuffer(4);
 
+let queryClient: QueryClient;
+
+/**
+ * The tab as the app mounts it: the session above it, the query cache around
+ * it — the screen tells the cache when a submission lands.
+ */
+function Providers({ children }: { children: React.ReactNode }) {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <SessionProvider>{children}</SessionProvider>
+    </QueryClientProvider>
+  );
+}
+
 async function renderSignedIn() {
   currentUser.mockResolvedValue(ana);
   await render(
-    <SessionProvider>
+    <Providers>
       <AddScreen />
-    </SessionProvider>
+    </Providers>
   );
   await screen.findByText('Add a place');
   await screen.findByLabelText('Name');
@@ -69,6 +84,8 @@ async function fillRequired() {
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  // `gcTime: 0` — react-query's default gc timer outlives the test run.
+  queryClient = new QueryClient({ defaultOptions: { queries: { gcTime: 0, retry: false } } });
   onAuthChange.mockReturnValue(jest.fn());
   useOrigin.mockReturnValue({ origin: DEFAULT_ORIGIN, isResolved: true, isUserLocation: false });
   geocodeAddress.mockResolvedValue(GEOCODED);
@@ -82,9 +99,9 @@ describe('Add tab, anonymous', () => {
   it('asks for a sign-in instead of showing the form', async () => {
     currentUser.mockResolvedValue(null);
     await render(
-      <SessionProvider>
+      <Providers>
         <AddScreen />
-      </SessionProvider>
+      </Providers>
     );
 
     expect(await screen.findByText('Adding a place needs an account.')).toBeOnTheScreen();
@@ -98,9 +115,9 @@ describe('Add tab, anonymous', () => {
     await i18n.changeLanguage('ro');
     currentUser.mockResolvedValue(null);
     await render(
-      <SessionProvider>
+      <Providers>
         <AddScreen />
-      </SessionProvider>
+      </Providers>
     );
 
     expect(await screen.findByText('Ca să adaugi un loc ai nevoie de cont.')).toBeOnTheScreen();
