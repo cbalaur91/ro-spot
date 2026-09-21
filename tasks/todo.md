@@ -1245,3 +1245,33 @@ activate rather than focus under TalkBack; the card's content-desc was read from
 and the pins read "Map Marker" (the List is the accessible route, per the ticket). The
 selected pin's 1–3px of shadow under its tip is cut at the bitmap's edge — barely visible.
 iOS unverified (`moveOnMarkerPress` is Android-only; Apple Maps doesn't recentre anyway).
+
+## Issue #31 — Clear filters and a result count
+
+Seams: `CategoryFilterProvider` (new `clear`), the List and Map screen suites, and a new
+two-tab suite that mounts both screens under one provider.
+
+- [x] A. Before screenshots on the emulator (EN, RO, large text); check Hermes has
+      `Intl.PluralRules` (i18next plurals need it) → verify: shots captured, plural resolves
+- [x] B. Tests first: count + plurals EN/RO (1/2/20), hidden while pending and on error,
+      polite live region on the count only; Clear only while a chip is on; filtered-empty
+      Clear on both tabs, true-empty unchanged; Map header count-free; clearing on one tab
+      clears the other → verify: new tests fail on main's code
+- [x] C. `clear()` on the filter; result row in the List's pinned block; Clear in both
+      filtered-empty states; EN + RO strings → verify: suite green, typecheck clean
+- [x] D. DESIGN.md recipe (result row) + §4.1/§4.2/§4.3 + §5 if departing → verify: read against code
+- [x] E. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [x] F. Emulator pass EN/RO/font 1.3 → verify: after screenshots
+- [x] G. `/code-review`, fix, commit, PR with screenshots
+
+Done 2026-09-21. `npm test` 429 green, typecheck + lint clean, Android bundle exports. Emulator
+(EN, RO, font 1.3 and 2.0): count + Clear in the pinned row, Clear on both filtered empties,
+clearing on the Map clears the List; Clear 44.2dp, notice pill 44.6dp, no overlap with the
+chips. Shots `~/.cache/rospot-shots/31-*.png`.
+
+**Found on the emulator:** Hermes has no `Intl.PluralRules` — Romanian read "2 de locuri"
+until the `intl-pluralrules` polyfill (see lessons). **Pre-existing, not fixed here:** a chip
+changed on the List while the Map is in the background leaves the removed places as default
+red Google pins on the Map — reproduced on `main`'s code; needs its own issue. **Decided:** no
+count over the true empty (the hora already says so); the List's filtered empty has two Clears
+(row + notice pill). **Not verified:** iOS (no live regions there; the count isn't announced).

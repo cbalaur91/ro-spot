@@ -240,6 +240,127 @@ describe('List tab', () => {
     expect(screen.getByRole('button', { name: 'Services' })).toBeTruthy();
   });
 
+  it('offers a way out of a list the chips emptied, and back to every place', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery]);
+
+    await renderScreen(<ListScreen />);
+    await screen.findByText(bakery.name);
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+
+    // One in the pinned row, one in the notice.
+    const clears = screen.getAllByRole('button', { name: 'Clear filters' });
+    expect(clears).toHaveLength(2);
+
+    await userEvent.press(clears[1]);
+
+    expect(screen.getByText(bakery.name)).toBeTruthy();
+    expect(screen.queryByText('No places match these filters.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Services' })).not.toBeSelected();
+  });
+
+  it('offers no clear when no chip is on, not even on the true empty', async () => {
+    fetchApprovedPlaces.mockResolvedValue([]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText('No places yet.')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+    // Nor a count: the hora already says there is nothing.
+    expect(screen.queryByText('0 places')).toBeNull();
+  });
+
+  it('clears every chip from the pinned row while places still show', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery, notary]);
+
+    await renderScreen(<ListScreen />);
+    await screen.findByText(bakery.name);
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+    await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
+
+    await userEvent.press(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(screen.getByText(bakery.name)).toBeTruthy();
+    expect(screen.getByText(notary.name)).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Services' })).not.toBeSelected();
+    expect(screen.getByRole('button', { name: 'Historic' })).not.toBeSelected();
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+  });
+
+  it('counts what the chips left', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery, notary]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText('2 places')).toBeTruthy();
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+    expect(screen.getByText('1 place')).toBeTruthy();
+    await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
+    // Services or Historic: still the notary alone.
+    expect(screen.getByText('1 place')).toBeTruthy();
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+    expect(screen.getByText('0 places')).toBeTruthy();
+  });
+
+  it.each([
+    [1, '1 loc'],
+    [2, '2 locuri'],
+    [19, '19 locuri'],
+    [20, '20 de locuri'],
+    [101, '101 locuri'],
+  ])('counts %i in Romanian as “%s”', async (total, label) => {
+    fetchApprovedPlaces.mockResolvedValue(
+      Array.from({ length: total }, (_, i) => ({ ...bakery, id: `p${i}`, name: `Loc ${i}` }))
+    );
+    await i18n.changeLanguage('ro');
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText(label)).toBeTruthy();
+  });
+
+  it('counts every result, not only the rows on screen', async () => {
+    fetchApprovedPlaces.mockResolvedValue(
+      Array.from({ length: 40 }, (_, i) => ({ ...bakery, id: `p${i}`, name: `Place ${i}` }))
+    );
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText('40 places')).toBeTruthy();
+  });
+
+  it('announces the count, and only the count, as it changes', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery, notary]);
+
+    await renderScreen(<ListScreen />);
+
+    await screen.findByText('2 places');
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+
+    const live = screen.container.queryAll(
+      (node) => node.props.accessibilityLiveRegion === 'polite'
+    );
+    expect(live).toHaveLength(1);
+    expect(live[0]).toHaveTextContent('1 place');
+  });
+
+  it('counts nothing while the places are still on their way', async () => {
+    fetchApprovedPlaces.mockReturnValue(new Promise(() => {}));
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText('Loading places')).toBeTruthy();
+    expect(screen.queryByText(/\d+ places?$/)).toBeNull();
+  });
+
+  it('counts nothing when the places never arrived', async () => {
+    fetchApprovedPlaces.mockRejectedValue(new Error('offline'));
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText('Something went wrong loading places.')).toBeTruthy();
+    expect(screen.queryByText(/\d+ places?$/)).toBeNull();
+  });
+
   it('sends the first submission to the Add tab', async () => {
     fetchApprovedPlaces.mockResolvedValue([]);
 

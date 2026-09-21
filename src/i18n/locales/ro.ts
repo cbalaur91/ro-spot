@@ -27,6 +27,7 @@ export default {
   filters: {
     label: 'Filtrează după categorie',
     noMatch: 'Niciun loc nu se potrivește cu filtrele.',
+    clear: 'Șterge filtrele',
   },
   map: {
     empty: 'Niciun loc pe hartă deocamdată.',
@@ -46,6 +47,10 @@ export default {
     emptyHint: 'Locurile aprobate apar aici — hora are nevoie de dansatori.',
     emptyCta: 'Adaugă primul loc',
     error: 'Locurile nu au putut fi încărcate.',
+    // Trei forme, nu două: „1 loc”, „2 locuri” (și 0, și 101–119), „20 de locuri”.
+    count_one: '{{count}} loc',
+    count_few: '{{count}} locuri',
+    count_other: '{{count}} de locuri',
   },
   detail: {
     photo: 'Fotografia {{index}} din {{total}}',

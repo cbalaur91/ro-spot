@@ -286,6 +286,41 @@ A pill that carries a filter.
   `accessibilityLabel` from `filters.label`
 - Each chip: `accessibilityRole="button"` and `accessibilityState={{ selected }}`
 
+### Clear filters
+
+Every chip off in one tap — back to the empty set, which already means "show everything",
+so there is still no "All" chip. `ClearFilters` in `src/components/CategoryChips.tsx`, which reads the shared filter itself:
+bare `text-[13px] font-semibold text-cherry` reading `filters.clear`, `min-h-[44px]
+justify-center active:opacity-60`, `accessibilityRole="button"`. Bare text rather than a
+chip: it is not a filter, and a pill beside the chips would read as a fourth one. It
+appears only where a chip is on.
+
+Where the screen has room for the ask to be the whole notice — the List's filtered empty —
+it is an outlined pill instead (§3, Pills), `mt-1` under `filters.noMatch`, with
+`min-h-[44px] justify-center` — the bare recipe lands a point or two short of 44.
+
+### Result row
+
+The List's line under the chips (§4.2): how many places the chips left, and Clear.
+
+- `-mt-3 min-h-[44px] flex-row flex-wrap content-center items-center justify-between
+  gap-x-4 px-6`. The `-mt-3` pulls it into the chip row's bottom padding so it reads as the
+  chips' own line; the 44 is Clear's target, and while there is a count the row keeps it
+  with no chip on too, so turning the first chip on doesn't push the list down. `content-center` keeps a lone count
+  centred in that height — a wrapping row packs its line to the top otherwise. Enlarged
+  text wraps Clear under the count rather than truncating either.
+- Count, left: `list.count` — `text-[12px] text-muted`, tabular figures, and the only
+  polite live region (`accessibilityLiveRegion="polite"`): announcing the whole row would
+  read Clear out on every refilter. It counts every filtered result, not the rows on
+  screen. None while the places are loading or have failed — "0 places" there would be a
+  claim the app can't yet make — and none over the true empty (§4.3).
+- Clear, right, only while a chip is on (§3, Clear filters).
+
+Plurals are i18next's, from the language's own rules: Romanian has three forms — `1 loc`,
+`2 locuri` (also 0 and 101–119), `20 de locuri`. Hermes has no `Intl.PluralRules`, and
+without one i18next quietly counts every language the English way, so `src/i18n/index.ts`
+imports the `intl-pluralrules` polyfill before anything else.
+
 ### Wordmark
 
 `Ro` in cherry, `Spot` in ink, bold, negative tracking. It is a name, not copy — it is
@@ -324,6 +359,8 @@ The app has more than one gutter, and each earns its width.
 The restyle costs a screen reader nothing, and neither should the next change.
 
 - Chips are buttons with `accessibilityState={{ selected }}`.
+- The List's result count is a polite live region, and nothing else in its row is (§3,
+  Result row). Android only: iOS has no live regions, and says nothing on a refilter.
 - A contact row is `accessibilityRole="link"` labelled `"{label}: {value}"`.
 - A photo is labelled `Photo {index} of {total}` — a gallery a screen reader can't count is
   a photo that might be the only one.
@@ -389,7 +426,12 @@ The foot of the map holds exactly one card, and three things can stand in it:
    card picked from a pin the reader can't see has to say which place it is) with the hint
    `map.cardHint`.
 3. **Empty** — `filters.noMatch` when chips are on, `map.empty` when they aren't. Blaming
-   the chips for an empty dataset would send the user hunting for a filter to undo.
+   the chips for an empty dataset would send the user hunting for a filter to undo. The
+   chips' empty carries Clear (§3) opposite the notice, in a `flex-row flex-wrap` that puts
+   it under the notice when the text is enlarged.
+
+The Map header carries **no count**: the pins are the count, and the header is a strip above
+a map that wants the rest of the screen.
 
 While the query is pending, no card shows.
 
@@ -414,6 +456,11 @@ because cards pass under it, and it is the band *and* the chips so that the sign
 under the header in both states — pinned, it is the Map tab's stack. Nothing shrinks or
 fades on the way: the wordmark leaves with the scroll, which is not an animation.
 
+Under the chips, pinned with them, the **result row** (§3): the count on the left, Clear on
+the right while a chip is on. There is no count while the places are loading or have failed,
+nor over the true empty — the hora already says there is nothing — so there the row shows
+only when a chip is on, and holds Clear alone.
+
 **A refilter from the pinned bar starts the new list at its top** — the list is nearest
 first, and left at its old depth it would open on the far end of a shorter list. It scrolls
 (unanimated) to the foot of the masthead, not to zero: that is exactly where the bar pins, so
@@ -429,8 +476,10 @@ notice unpinned.
 #### 4.3 List, empty — `EmptyInvitation` in the same file
 
 **Only the true empty gets the hora.** A list emptied by the user's own chips gets
-`filters.noMatch` in a `ScreenNotice` instead; offering to add a place there would answer a
-question nobody asked.
+`filters.noMatch` in a `ScreenNotice` instead, over an outlined pill reading `filters.clear`;
+offering to add a place there would answer a question nobody asked. The pinned row's Clear
+is up by the chips; the pill is where the eye is. The true empty offers no Clear — there is
+nothing to clear.
 
 Centred in what's left below the header, at the 40 measure: a stretched 58px hora band,
 `mt-[26px]` to `list.empty` (`text-[17px] font-semibold`), `mt-[7px]` to `list.emptyHint`
@@ -823,6 +872,11 @@ Deliberate, and not to be "fixed" back:
   The canvas's detail screen has neither action. They are the List card's two actions at
   the size of a screen, where they are what most visits end in; Report stepped down from a
   pill so that it doesn't compete with them. Owner's call, #28.
+- **The List has a result row under its chips, and both tabs have Clear filters.** The
+  canvas draws neither. Once the chips can empty a screen, the way back has to be one tap,
+  and the List is where a count means something — the Map's pins are their own count, so
+  its header stays as drawn. Clear is text, not the canvas's "All" chip (the second
+  divergence above still stands). #31.
 - **A List card with no photograph shows an outline rhomb in a bordered tile,** not the
   canvas's 45° hatch. The hatch is the canvas's mark for a photograph not yet chosen or not
   yet loaded; this tile means there isn't one, and an outline says "nothing here" where a

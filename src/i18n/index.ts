@@ -1,3 +1,8 @@
+// Before i18next: Hermes has no `Intl.PluralRules`, and without it i18next
+// quietly counts every language the English way — "2 de locuri" for Romanian's
+// "2 locuri". The polyfill only installs itself where the engine lacks one.
+import 'intl-pluralrules';
+
 import { getLocales } from 'expo-localization';
 import i18next from 'i18next';
 import { initReactI18next } from 'react-i18next';

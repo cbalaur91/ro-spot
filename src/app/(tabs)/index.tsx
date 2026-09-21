@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CategoryChips } from '@/components/CategoryChips';
+import { CategoryChips, ClearFilters } from '@/components/CategoryChips';
 import { PlacesMap } from '@/components/PlacesMap';
 import { milesLabel } from '@/geo';
 import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
@@ -216,10 +216,16 @@ export default function MapScreen() {
           ) : isPending ? null : (
             <MapCard>
               {/* An empty map means two different things, and blaming the chips for
-                  an empty dataset would send the user hunting for a filter to undo. */}
-              <Text className="text-[13px] text-muted">
-                {selected.size > 0 ? t('filters.noMatch') : t('map.empty')}
-              </Text>
+                  an empty dataset would send the user hunting for a filter to undo.
+                  The one the chips caused comes with the way out of it. */}
+              {selected.size > 0 ? (
+                <View className="flex-row flex-wrap items-center justify-between gap-x-4">
+                  <Text className="shrink text-[13px] text-muted">{t('filters.noMatch')}</Text>
+                  <ClearFilters />
+                </View>
+              ) : (
+                <Text className="text-[13px] text-muted">{t('map.empty')}</Text>
+              )}
             </MapCard>
           )}
         </View>

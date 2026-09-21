@@ -13,6 +13,8 @@ type CategoryFilter = {
   /** Empty means no chip is on, which means everything is shown. */
   selected: ReadonlySet<PlaceCategory>;
   toggle: (category: PlaceCategory) => void;
+  /** Every chip off — back to everything, the same empty set the tabs open on. */
+  clear: () => void;
   /** The one predicate Map and List both filter with. */
   matches: (category: PlaceCategory) => boolean;
 };
@@ -35,13 +37,16 @@ export function CategoryFilterProvider({ children }: { children: React.ReactNode
     });
   }, []);
 
+  const clear = useCallback(() => setSelected(new Set()), []);
+
   const value = useMemo<CategoryFilter>(
     () => ({
       selected,
       toggle,
+      clear,
       matches: (category) => selected.size === 0 || selected.has(category),
     }),
-    [selected, toggle]
+    [selected, toggle, clear]
   );
 
   return (

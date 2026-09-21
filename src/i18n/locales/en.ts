@@ -35,6 +35,7 @@ export default {
     // One string for one situation, shared by both tabs — the Map and the List
     // are filtered by the same chips and should say the same thing about it.
     noMatch: 'No places match these filters.',
+    clear: 'Clear filters',
   },
   map: {
     empty: 'No places on the map yet.',
@@ -57,6 +58,10 @@ export default {
     emptyHint: 'Approved places show up here — the hora needs dancers.',
     emptyCta: 'Add the first place',
     error: 'Something went wrong loading places.',
+    // How many places the chips left, under the chips. i18next picks the form
+    // from the language's own plural rules.
+    count_one: '{{count}} place',
+    count_other: '{{count}} places',
   },
   detail: {
     // The count is in the label because a gallery a screen reader can't count is
