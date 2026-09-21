@@ -1251,15 +1251,27 @@ iOS unverified (`moveOnMarkerPress` is Android-only; Apple Maps doesn't recentre
 Seams: `CategoryFilterProvider` (new `clear`), the List and Map screen suites, and a new
 two-tab suite that mounts both screens under one provider.
 
-- [ ] A. Before screenshots on the emulator (EN, RO, large text); check Hermes has
+- [x] A. Before screenshots on the emulator (EN, RO, large text); check Hermes has
       `Intl.PluralRules` (i18next plurals need it) → verify: shots captured, plural resolves
-- [ ] B. Tests first: count + plurals EN/RO (1/2/20), hidden while pending and on error,
+- [x] B. Tests first: count + plurals EN/RO (1/2/20), hidden while pending and on error,
       polite live region on the count only; Clear only while a chip is on; filtered-empty
       Clear on both tabs, true-empty unchanged; Map header count-free; clearing on one tab
       clears the other → verify: new tests fail on main's code
-- [ ] C. `clear()` on the filter; result row in the List's pinned block; Clear in both
+- [x] C. `clear()` on the filter; result row in the List's pinned block; Clear in both
       filtered-empty states; EN + RO strings → verify: suite green, typecheck clean
-- [ ] D. DESIGN.md recipe (result row) + §4.1/§4.2/§4.3 + §5 if departing → verify: read against code
-- [ ] E. Gates: typecheck, lint, `npm test`, android export → verify: all green
-- [ ] F. Emulator pass EN/RO/font 1.3 → verify: after screenshots
-- [ ] G. `/code-review`, fix, commit, PR with screenshots
+- [x] D. DESIGN.md recipe (result row) + §4.1/§4.2/§4.3 + §5 if departing → verify: read against code
+- [x] E. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [x] F. Emulator pass EN/RO/font 1.3 → verify: after screenshots
+- [x] G. `/code-review`, fix, commit, PR with screenshots
+
+Done 2026-09-21. `npm test` 429 green, typecheck + lint clean, Android bundle exports. Emulator
+(EN, RO, font 1.3 and 2.0): count + Clear in the pinned row, Clear on both filtered empties,
+clearing on the Map clears the List; Clear 44.2dp, notice pill 44.6dp, no overlap with the
+chips. Shots `~/.cache/rospot-shots/31-*.png`.
+
+**Found on the emulator:** Hermes has no `Intl.PluralRules` — Romanian read "2 de locuri"
+until the `intl-pluralrules` polyfill (see lessons). **Pre-existing, not fixed here:** a chip
+changed on the List while the Map is in the background leaves the removed places as default
+red Google pins on the Map — reproduced on `main`'s code; needs its own issue. **Decided:** no
+count over the true empty (the hora already says so); the List's filtered empty has two Clears
+(row + notice pill). **Not verified:** iOS (no live regions there; the count isn't announced).

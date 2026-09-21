@@ -265,6 +265,8 @@ describe('List tab', () => {
 
     expect(await screen.findByText('No places yet.')).toBeTruthy();
     expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+    // Nor a count: the hora already says there is nothing.
+    expect(screen.queryByText('0 places')).toBeNull();
   });
 
   it('clears every chip from the pinned row while places still show', async () => {

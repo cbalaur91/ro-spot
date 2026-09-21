@@ -34,3 +34,4 @@
 
 - Ship every ticket as a branch + PR (`<issue>-<slug>`, body `Closes #N`), never a commit on `main`: /implement's "commit to the current branch" means the feature branch, so branch before the first commit.
 - A custom `react-native-maps` marker on Android stops redrawing its view once it settles and only starts again when the view's own size changes (`MapMarker.java`): a pin that changes look inside a fixed box keeps its old image. Put the changing state in the marker's `key` so a new look is a new marker.
+- Hermes has no `Intl.PluralRules`, and i18next doesn't warn — it falls back to a one/other rule, so English plurals look right and Romanian's `few` never fires ("2 de locuri"). Jest runs on Node, which has the API, so only the device shows it. `intl-pluralrules` is imported at the top of `src/i18n/index.ts`; a plural test that matters deletes `Intl.PluralRules` first.

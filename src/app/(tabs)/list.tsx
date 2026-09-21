@@ -44,7 +44,7 @@ function Masthead({ showOriginNote }: { showOriginNote: boolean }) {
  */
 function FilterBar({ count }: { count?: number }) {
   const { t } = useTranslation();
-  const { selected, clear } = useCategoryFilter();
+  const { selected } = useCategoryFilter();
   const isFiltered = selected.size > 0;
 
   return (
@@ -70,9 +70,10 @@ function FilterBar({ count }: { count?: number }) {
               {t('list.count', { count })}
             </Text>
           ) : (
+            // Holds the left end, so `justify-between` keeps Clear on the right.
             <View />
           )}
-          {isFiltered ? <ClearFilters onPress={clear} /> : null}
+          {isFiltered ? <ClearFilters /> : null}
         </View>
       ) : null}
     </View>
@@ -183,7 +184,12 @@ export default function ListScreen() {
           </View>
         }
         onScroll={(event) => (offset.current = event.nativeEvent.contentOffset.y)}
-        renderSectionHeader={() => <FilterBar count={places.length} />}
+        // No count over the true empty: the hora already says there is nothing.
+        renderSectionHeader={() => (
+          <FilterBar
+            count={places.length > 0 || selected.size > 0 ? places.length : undefined}
+          />
+        )}
         // Android's default is off.
         stickySectionHeadersEnabled
         renderItem={({ item }) => (
@@ -209,7 +215,7 @@ export default function ListScreen() {
               <Pressable
                 accessibilityRole="button"
                 onPress={clear}
-                className="mt-1 rounded-full border-[1.5px] border-cherry px-6 py-[11px] active:opacity-70"
+                className="mt-1 min-h-[44px] justify-center rounded-full border-[1.5px] border-cherry px-6 py-[11px] active:opacity-70"
               >
                 <Text className="text-[14px] font-semibold text-cherry">{t('filters.clear')}</Text>
               </Pressable>

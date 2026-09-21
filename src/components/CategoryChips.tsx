@@ -92,13 +92,14 @@ export function CategoryChips() {
  * filter, and a pill beside the chips would read as a fourth one. The height is
  * the 44 a thumb needs; the label is what a screen reader hears.
  */
-export function ClearFilters({ onPress }: { onPress: () => void }) {
+export function ClearFilters() {
   const { t } = useTranslation();
+  const { clear } = useCategoryFilter();
 
   return (
     <Pressable
       accessibilityRole="button"
-      onPress={onPress}
+      onPress={clear}
       className="min-h-[44px] justify-center active:opacity-60"
     >
       <Text className="text-[13px] font-semibold text-cherry">{t('filters.clear')}</Text>

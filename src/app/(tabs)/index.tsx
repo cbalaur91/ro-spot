@@ -151,7 +151,7 @@ function SelectedPlace({ place }: { place: PlaceWithDistance }) {
 
 export default function MapScreen() {
   const { t } = useTranslation();
-  const { selected, clear } = useCategoryFilter();
+  const { selected } = useCategoryFilter();
   const { places, origin, isUserLocation, isPending, isError, refetch } =
     useVisiblePlaces();
   // The pin the user picked, if they have. Until then the card follows the
@@ -221,7 +221,7 @@ export default function MapScreen() {
               {selected.size > 0 ? (
                 <View className="flex-row flex-wrap items-center justify-between gap-x-4">
                   <Text className="shrink text-[13px] text-muted">{t('filters.noMatch')}</Text>
-                  <ClearFilters onPress={clear} />
+                  <ClearFilters />
                 </View>
               ) : (
                 <Text className="text-[13px] text-muted">{t('map.empty')}</Text>

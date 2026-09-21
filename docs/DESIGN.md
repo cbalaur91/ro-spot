@@ -289,14 +289,15 @@ A pill that carries a filter.
 ### Clear filters
 
 Every chip off in one tap — back to the empty set, which already means "show everything",
-so there is still no "All" chip. `ClearFilters` in `src/components/CategoryChips.tsx`:
+so there is still no "All" chip. `ClearFilters` in `src/components/CategoryChips.tsx`, which reads the shared filter itself:
 bare `text-[13px] font-semibold text-cherry` reading `filters.clear`, `min-h-[44px]
 justify-center active:opacity-60`, `accessibilityRole="button"`. Bare text rather than a
 chip: it is not a filter, and a pill beside the chips would read as a fourth one. It
 appears only where a chip is on.
 
 Where the screen has room for the ask to be the whole notice — the List's filtered empty —
-it is an outlined pill instead (§3, Pills), `mt-1` under `filters.noMatch`.
+it is an outlined pill instead (§3, Pills), `mt-1` under `filters.noMatch`, with
+`min-h-[44px] justify-center` — the bare recipe lands a point or two short of 44.
 
 ### Result row
 
@@ -304,15 +305,15 @@ The List's line under the chips (§4.2): how many places the chips left, and Cle
 
 - `-mt-3 min-h-[44px] flex-row flex-wrap content-center items-center justify-between
   gap-x-4 px-6`. The `-mt-3` pulls it into the chip row's bottom padding so it reads as the
-  chips' own line; the 44 is Clear's target, and the row keeps it with no chip on too, so
-  turning the first chip on doesn't push the list down. `content-center` keeps a lone count
+  chips' own line; the 44 is Clear's target, and while there is a count the row keeps it
+  with no chip on too, so turning the first chip on doesn't push the list down. `content-center` keeps a lone count
   centred in that height — a wrapping row packs its line to the top otherwise. Enlarged
   text wraps Clear under the count rather than truncating either.
 - Count, left: `list.count` — `text-[12px] text-muted`, tabular figures, and the only
   polite live region (`accessibilityLiveRegion="polite"`): announcing the whole row would
   read Clear out on every refilter. It counts every filtered result, not the rows on
-  screen. None while the places are loading or have failed: "0 places" there would be a
-  claim the app can't yet make.
+  screen. None while the places are loading or have failed — "0 places" there would be a
+  claim the app can't yet make — and none over the true empty (§4.3).
 - Clear, right, only while a chip is on (§3, Clear filters).
 
 Plurals are i18next's, from the language's own rules: Romanian has three forms — `1 loc`,
@@ -456,8 +457,9 @@ under the header in both states — pinned, it is the Map tab's stack. Nothing s
 fades on the way: the wordmark leaves with the scroll, which is not an animation.
 
 Under the chips, pinned with them, the **result row** (§3): the count on the left, Clear on
-the right while a chip is on. The row stands above the loading and error notices too, with
-Clear but without the count.
+the right while a chip is on. There is no count while the places are loading or have failed,
+nor over the true empty — the hora already says there is nothing — so there the row shows
+only when a chip is on, and holds Clear alone.
 
 **A refilter from the pinned bar starts the new list at its top** — the list is nearest
 first, and left at its old depth it would open on the far end of a shorter list. It scrolls
