@@ -1083,3 +1083,95 @@ Follow-ups worth an issue:
   flagged. The moderator sees the edit again regardless.
 - `return_place_to_review()` is the one function in the migration without a
   `revoke execute` — harmless for a trigger function, inconsistent with the file's hygiene.
+
+## List card — thumbnail, description, quick actions, pinned chips (unticketed, owner's ask 2026-09-20)
+
+Four changes to the List tab, asked for by the owner in one go. No new dependency and no native
+rebuild: `expo-image`, RN `Linking` and Ionicons are already in the installed debug APK, and the
+list rows already carry `description`, `photo_paths`, `phone`, `lat`, `lng`.
+
+Decided with the owner before starting: Directions / Call sit in a **labelled footer row** under a
+hairline (cards grow to ~162dp, ~3.7 a screen, in exchange for actions that say what they do), and
+the emulator pass may seed **8 temporary approved rows** in the live project, deleted by constant
+id afterwards. The chips pin; the wordmark does not shrink on scroll — the preamble of DESIGN.md allows no
+animation beyond a photograph's fade.
+
+- [x] A. `directionsUrl(coords, os)` in `src/links.ts`, test first → verified: 4 unit tests; Google
+      `dir` URL everywhere but iOS, Apple Maps there, always to the coordinates
+- [x] B. `actions.directions` / `directionsTo` / `call` / `callPlace` in both locales → verified:
+      RO assertion in D, and `Traseu` / `Sună` read on the emulator
+- [x] C. `PlaceRow`: 72px thumbnail (outline-rhomb tile when there is no photo or it fails), the
+      distance pill in the eyebrow row, a one-line description, a body `Pressable` with an explicit
+      label and a sibling footer of link actions; `list.tsx`: `Masthead` + `FilterBar`, a
+      single-section `SectionList` with the band and chips as its sticky header, empty states in
+      the list footer → verified: the 13 existing list tests passed unchanged
+- [x] D. List suite: thumbnail uri, no-photo tile, failed photo and its retry on refetch,
+      description, row label, Directions / Call open the right URL and don't navigate, links are
+      siblings of the row, Call hidden for a null or un-dialable phone, a failed hand-off alerts,
+      the bar pins on Android (mutation-checked: fails without the prop), chips survive both
+      empties, RO labels → verified: 26 in the suite
+- [x] E. DESIGN.md preamble, §1, §2, §3 (Card, new Thumbnail and Card action, Pills,
+      Accessibility), §4.2, §4.3, §5 → verified: read against the shipped classes by a reviewer
+- [x] F. Gates → verified: `bun run typecheck` and `bun run lint` clean, `npm test` 363 green
+      (was 347), `npx expo export --platform android` bundles at 5.4MB
+- [x] G. Four-lens review (correctness, a11y, DESIGN.md, tests), each finding adversarially
+      verified → verified: 8 confirmed and fixed, 5 refuted, a11y lens clean; gates re-run
+- [x] H. Emulator pass on the AVD `rospot` with 8 temporary approved rows → verified: below
+
+### Review — List card (2026-09-20)
+
+Shipped: every List card shows its first photograph, a line of its description, and a foot with
+Directions and — where the phone field holds a number — Call; the band and chips pin under the
+status bar while the masthead scrolls away. Cards went from ~100dp to ~140–150dp, so about four
+to a screen where there were six: the owner chose the labelled foot knowing that.
+
+**Verified on the emulator, against the live project:** thumbnail, outline tile for a place with
+no photo and for one whose path points at nothing, one-line description, pills in one column;
+the bar pins opaque with cards passing under it; a pinned chip filters; the chips scroll sideways
+while pinned (forced with 1.7× text in Romanian) and keep their offset across a refilter, so the
+bar does not remount; the over-filtered notice keeps its chips and offers no CTA; Directions
+hands `https://www.google.com/maps/dir/?api=1&destination=…` to Google Maps, which opened a
+route; Call hands `tel:3135550142` and `tel:+12485550117` to the dialer, prefilled; back from
+both lands on the List at the same scroll depth with no detail pushed; "open 7 days" gets no
+Call; the body opens the detail screen; Romanian at 1.3× text holds (`Traseu`, `Sună`,
+`4,7 mi`); a very long name, address and description clamp to 2 / 2 / 1 lines. Screenshots in
+`~/.cache/rospot-shots/` (`list-before`, `list-top`, `list-pinned`, `list-nomatch`,
+`directions-gmaps`, `dialer`, `list-ro-large-top`, `list-pinned-hscroll`, `list-refilter-top`,
+`list-after-cleanup`). The 8 fixture rows were deleted by constant id; approved rows and
+duplicate flags are back to baseline (St. George and the owner's "Test"; 0 flags); the standing
+account, the per-app locale and the font scale were left as found.
+
+**Decisions worth knowing:**
+- **The card's two press targets are siblings.** A link inside a button is unreachable on
+  VoiceOver, so the body is a `Pressable` and the foot sits beside it. The body carries an
+  explicit label — category, name, address, distance — because its own text now includes up to
+  2000 characters somebody else wrote.
+- **Both empties moved to the list footer.** A section's header counts as an item, so
+  `ListEmptyComponent` never fires while the chips are on screen, and the chips are the way out
+  of the over-filtered empty.
+- **A refilter from the pinned bar scrolls to the foot of the masthead** — where the bar pins —
+  so the nearest place is first and the chips don't move under the finger.
+- **A failed thumbnail is remembered per fetch, not for good.** The tab never unmounts, so
+  pull-to-refresh is how a photo that timed out gets asked for again.
+
+Changed after the review:
+- `rounded-lg` is 7 on a device (NativeWind's rem is 14), so the tile and the photograph
+  differed by a pixel; both take one `borderRadius: 8` literal now.
+- `scrollToLocation` sent the refilter to offset zero — the list keeps no frame for a sticky
+  header's cell. Replaced by `scrollTo` the measured masthead height; caught on the emulator.
+- `Diamond.tsx`'s comment and §2 / §5 of DESIGN.md said things the change had made untrue.
+- Three tests that could not fail: the sticky bar, the chips in both empties, links-as-siblings.
+
+**Considered and declined:** a wordmark that shrinks on scroll (DESIGN.md allows no animation);
+icon-only actions (owner chose labels); `geo:` and `canOpenURL` (Android makes an app declare
+the scheme before it may ask, and an `https` URL always has a handler).
+
+Noticed, not done: a tap on a pinned chip *during* a fling only stops the fling — Android's own
+behaviour for any scroll view, not a hit-test fault. The pull-to-refresh spinner was not caught
+in a screenshot, though the refresh itself is how the fixtures appeared.
+
+Follow-ups worth an issue:
+- The detail screen has no Directions link; the card now does.
+- Thumbnails load the full-size JPEG. Fine at seed scale; an upload-time thumbnail is the fix.
+- The gallery's hand-drawn rhombs can move to `Diamond`'s outline form when that file is touched.
+- The owner's approved "Test" place (Grosse Ile) is live in the project.

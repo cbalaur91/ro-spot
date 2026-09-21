@@ -14,7 +14,7 @@ shipped, the canvas is right.
 The language is Romanian cross-stitch — the «ie», the embroidered blouse. Festive star
 bands as the app's signature, stitched cards, diamond (rhomb) accents, hora dancers where
 the app is empty. Everything is system-ui type; there is no display face, no dark mode, and
-no animation beyond the photo gallery's fade.
+no animation beyond a photograph's fade — the gallery's, and the List thumbnail's.
 
 ---
 
@@ -31,7 +31,7 @@ token means adding it in both.
 | `ink` | `ink` | `#171310` | Headings, names, body copy. |
 | `muted` | `muted` | `#6B6259` | Addresses, subtitles, hints, secondary labels, icons that aren't the point. |
 | `line` | `line` | `#E4DED4` | Every hairline: card borders, contact-row rules, chip outlines when off, input borders. |
-| `cherry` | `cherry` | `#8C1D2C` | The primary accent — the vișiniu of embroidery thread. Wordmark's "Ro", filled pills, selected chips, active tab, links that are actions. Also the **Food & Drink** tint. |
+| `cherry` | `cherry` | `#8C1D2C` | The primary accent — the vișiniu of embroidery thread. Wordmark's "Ro", filled pills, selected chips, active tab, links that are actions — and, in a List card's foot, the 16px icon beside one: the only icon in the app that is the point. Also the **Food & Drink** tint. |
 | `voronet` | `voronet` | `#2A5DA8` | The blue of the painted monasteries. **Historic** tint; the canvas's inline link colour (Show / Forgot password). |
 | `pine` | `pine` | `#3F5D4A` | **Services** tint; the APPROVED badge's label. |
 | `card` | `card` | `#FFFFFF` | Card ground. Cards sit on white, not on `surface` — the warm ground reads as the page and a card has to lift off it. |
@@ -59,8 +59,8 @@ becomes a colour:
 | `food_drink` | `cherry` | `#8C1D2C` |
 | `services` | `pine` | `#3F5D4A` |
 
-A tint arrives as data, so anything carrying it — a card's top border, a bullet, an eyebrow,
-a pin, a chip label — takes it as an inline style value, not as a class.
+A tint arrives as data, so anything carrying it — a card's top border, an eyebrow, a pin, a
+chip label — takes it as an inline style value, not as a class.
 
 ---
 
@@ -135,14 +135,15 @@ centre rather than as a strip that starts at the left edge.
 ### The rhomb
 
 `Diamond` is a rotated square view, not SVG: at the sizes it is used a stitched X would be
-mud, and a view can carry a border and a shadow that a path can't. The border and shadow are
-the map pin's alone — everywhere else the rhomb sits on the app's own ground and needs
-neither.
+mud, and a view can carry a border and a shadow that a path can't. The shadow, and a ring
+around a filled rhomb, are the map pin's alone — everywhere else the rhomb sits on the app's
+own ground and needs neither. The other thing a border can be is the whole rhomb: a
+`transparent` tint and a `border` is an outline.
 
 | Size | Tint | Where |
 |---|---|---|
 | `6` | `surface` | The dot inside a selected chip. |
-| `9` | category | The bullet on a place card, 5px down so it reads against the eyebrow rather than above it. |
+| `10` | `transparent`, 1px `line` border | The List card's no-photo tile (§3, Thumbnail). An outline, because there is nothing there. |
 | `10` | `line` | The detail screen's not-found notice. |
 | `11` | `cherry` | The Map header's accent; the web map stand-in. |
 | `17` (13px core) | category | The map pin — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. Bare, the web stand-in for the Add pin. |
@@ -157,9 +158,11 @@ shape, and undoing it belongs to the content.
 Native is border-box. A canvas rhomb stated as 13px with a 2px border is 17px of view. Add
 the border twice when porting a size.
 
-Photo-gallery page marks are 6px rhombs that are *not* `Diamond` — the inactive one is a
-1px `line` outline with no fill, which `Diamond` does not express. If a second outline-only
-rhomb ever appears, that is the moment to give `Diamond` the variant.
+The photo gallery's page marks and its no-photos box are rhombs that are *not* `Diamond` —
+they were drawn by hand before anything else needed an outline. The List's no-photo tile is
+the second outline-only rhomb, and it is `Diamond` with a `transparent` tint and a `border`,
+which turned out to need no new variant. The gallery's move over when that file is next
+touched. The place card's 9px tint bullet is gone: a thumbnail stands where it stood.
 
 ---
 
@@ -175,12 +178,24 @@ The numbers below are the place row's; the variants say where they differ.
 
 - `bg-card` (white), `border border-line`, `rounded-[13px]`
 - `borderTopWidth: 3` in the category tint (inline — the tint is data)
-- padding `px-4 py-3.5` (16 / 14)
-- Contents: a 9px tint bullet at `mt-[5px]`, `gap-[11px]` to the text column; distance
-  opposite, `self-start`
-- Pressed: `active:opacity-80` on the whole card. A card can't take a full-bleed press
-  highlight without losing its edges, so it dims instead.
 - On the List: `mx-[18px] mb-3`
+
+The place row is the one card with two things to press, and they are **siblings**, never one
+inside the other — a button inside a button is one a screen reader can't reach.
+
+- **Body** — a `Pressable`, `flex-row gap-3 px-4 pt-3.5 pb-3`, which opens the place. A 72px
+  thumbnail (below), then the text column: the eyebrow sharing its line with the distance
+  pill (`flex-row items-center justify-between gap-2.5`); the name, `mt-0.5 text-[16px]
+  font-semibold leading-[21px]`; the address, `mt-[3px] text-[12px] leading-[15px]
+  text-muted` — both held to two lines; and **one** line of the description, `mt-1.5
+  text-[12.5px] leading-[17px] text-ink`. Ink where the address is muted: it is prose, and
+  set like the address it would read as a second one.
+- **Foot** — `flex-row gap-6 border-t border-line px-4`, holding the card actions (below).
+- Pressed: `active:opacity-80` on the body. A card can't take a full-bleed press highlight
+  without losing its edges, so the part that was pressed dims instead.
+
+The thumbnail, the description and the foot are the List's alone — the two variants below
+have none of them.
 
 The map's card varies deliberately: `rounded-xl` (12), `bg-surface` rather than white
 (it sits on map tiles, and the app's own paper is what lifts it off them), a 10px star band
@@ -189,6 +204,43 @@ across the top instead of a tint border, `overflow-hidden`, body `px-[14px] pb-[
 shadow of `0px 4px 14px {ink}1F`, the palette's own colour at 12% rather than a second black.
 
 The Profile card of §4.8 varies less: `rounded-xl` (12) and `px-[14px] py-3`.
+
+### Thumbnail
+
+The place's first photograph, on the left of a List card, where the 9px tint bullet used to
+be. A bullet said "this is a place"; a photograph says which one. The category is still said
+twice, by the band and by the eyebrow.
+
+- 72 × 72, `borderRadius: 8` — a literal, for the photograph and for the tile that stands in
+  for it. Not `rounded-lg`: NativeWind counts a rem as 14 on a device, which makes that 7,
+  and the two states of one square should not differ by a pixel.
+- The gallery's treatment: `backgroundColor: line`, `contentFit="cover"`, `transition={180}`
+- **No photograph, or one that won't load:** the same square as `border border-line` with no
+  fill, a 10px outline rhomb at its centre. Not a `line` box, which is what a photograph
+  still on its way looks like, and not the canvas's hatch (§5).
+- A failed load is remembered against the fetch it happened under, not for good. The List
+  tab never unmounts, so pull-to-refresh is how a photograph that timed out once gets asked
+  for again.
+- Neither labelled nor hidden: it sits inside the body, which is labelled, so nothing of it
+  reaches a screen reader either way.
+
+### Card action
+
+A way out of the app from a List card's foot — to the maps app, to the dialer.
+
+- `accessibilityRole="link"`, as a contact row is: it leaves the app
+- `flex-row items-center gap-1.5 py-[13px] active:opacity-60` — the padding is what makes it 44
+- Ionicons at 16 in `cherry`, then the label, `text-[13.5px] font-semibold leading-[18px]
+  text-cherry`
+- **Directions** — `navigate-outline`, always there, because every place has a pin.
+  `directionsUrl` routes to the **coordinates**, not the address: the pin is what the
+  submitter placed, and somebody else's geocoder can put an address somewhere it never was.
+- **Call** — `call-outline`, only when `telUrl` makes a URL of the phone field. "Open 7 days"
+  is not a number, and a link that goes nowhere is worse than none.
+- The drawn label is one word (`actions.directions`, `actions.call`); the accessible one
+  names the place (`actions.directionsTo`, `actions.callPlace`), because eight links all
+  called "Directions" are one link.
+- A device with nothing to open the link says `detail.linkFailed`, as the detail screen does.
 
 ### Eyebrow
 
@@ -209,7 +261,7 @@ only above an input or a group (§4.5, §4.8).
 |---|---|
 | Primary (filled) | `rounded-full bg-cherry`, label `text-[14px] font-semibold text-surface`, `px-6 py-3`, `active:opacity-80`. The one thing to do on a screen that failed. |
 | Secondary (outlined) | `rounded-full border-[1.5px] border-cherry`, label `text-[14px] font-semibold text-cherry`, `px-6 py-[11px]`, `active:opacity-70`. An invitation rather than the app insisting. |
-| Distance | `rounded-full bg-parchment px-[9px] py-1`, label `text-[11px] font-semibold text-muted` with `fontVariant: ['tabular-nums']`. |
+| Distance | `rounded-full bg-parchment px-[9px] py-1`, label `text-[11px] font-semibold text-muted` with `fontVariant: ['tabular-nums']`. On a List card it shares the eyebrow's line, at the right — the same x in every card, and none of the name's width. |
 
 Tabular figures are the point of the distance pill: a column of them lines up down the list.
 Where there is only **one** distance on a screen, drop the pill and set the number bare —
@@ -275,9 +327,13 @@ The restyle costs a screen reader nothing, and neither should the next change.
 - A photo is labelled `Photo {index} of {total}` — a gallery a screen reader can't count is
   a photo that might be the only one.
 - The map card is one button labelled with the **place's name**, not "open place": the card
-  is the place. A List row is a button with no explicit label — its accessible name is the
-  card's own text, which already reads category, name, address and distance. Label a card
-  explicitly only where the text inside it wouldn't do.
+  is the place. A List row's body is a button labelled `"{category}, {name}, {address},
+  {distance}"` — what the row read as when its own text was its name. It is labelled now
+  because its text includes a description somebody else wrote, at whatever length they
+  wrote it, and a row is not the place to hear all of it. The category goes in sentence
+  case: an all-caps label is spelled out letter by letter. Label a card explicitly only
+  where the text inside it wouldn't do.
+- A List card's actions are links, siblings of the body, each named with its place.
 - Touch targets reach 44 through padding, not `hitSlop`, where the control hangs off an
   absolutely positioned parent — Android clips touch at a parent's bounds.
 
@@ -325,8 +381,26 @@ rhomb, and points at the List tab. Web is a dev convenience, not a release targe
 
 30px wordmark and `list.subtitle` at the 24 gutter, the fallback-origin note under them when
 — and only when — the origin has resolved to the fallback. Then the 14px star band edge to
-edge, then the chip row. Rows are cards at `mx-[18px] mb-3`; the whole card navigates.
-Pull-to-refresh is the list's refetch.
+edge, then the chip row. Rows are cards at `mx-[18px] mb-3`; the card's body navigates and
+its foot leaves the app (§3, Card). Pull-to-refresh is the list's refetch.
+
+**The band and the chips pin; the masthead scrolls away.** A filter you have to scroll back
+up to reach is one you stop using halfway down the list. The pinned block is `bg-surface`,
+because cards pass under it, and it is the band *and* the chips so that the signature is
+under the header in both states — pinned, it is the Map tab's stack. Nothing shrinks or
+fades on the way: the wordmark leaves with the scroll, which is not an animation.
+
+**A refilter from the pinned bar starts the new list at its top** — the list is nearest
+first, and left at its old depth it would open on the far end of a shorter list. It scrolls
+(unanimated) to the foot of the masthead, not to zero: that is exactly where the bar pins, so
+the chips don't move under a finger that is still choosing among them. With the masthead still
+on screen there is nothing to correct and nothing moves.
+
+The mechanism is a `SectionList` with one section — the masthead is its
+`ListHeaderComponent`, the band and chips its section header, and
+`stickySectionHeadersEnabled` is set outright because Android's default is off. While the
+query is pending or has failed there is no list, and the same two blocks stand above the
+notice unpinned.
 
 #### 4.3 List, empty — `EmptyInvitation` in the same file
 
@@ -342,6 +416,11 @@ Centred in what's left below the header, at the 40 measure: a stretched 58px hor
 The band is stretched rather than dropped straight in — it measures itself, and a centred
 column gives its children no width to measure. The list's `contentContainerStyle` carries
 `flexGrow: 1` so the invitation has a full screen to centre in.
+
+Both empties are the list's **footer**, not its `ListEmptyComponent`, and the footer's
+wrapper carries `flexGrow: 1` too. A section's header counts as an item, so a list that still
+shows its chips is never empty as far as the list is concerned — and the chips have to stay,
+because they are the way out of the over-filtered one.
 
 #### 4.4 Place detail — `src/app/place/[id].tsx`
 
@@ -659,6 +738,18 @@ Deliberate, and not to be "fixed" back:
   There is no name to show — nothing collects one — and inventing one from the address would
   put a stranger's name on their own screen. The initials in the rhomb come off the address
   for the same reason. It becomes name-over-email the day a profile carries a name.
+- **A List card carries a photograph, a line of description, and Directions / Call.** The
+  canvas's card is a bullet, an eyebrow, a name, an address and a distance. Photos and a
+  description are required of every place and the List showed neither; and most visits to a
+  list of places end in going there or ringing them, which took two taps. The thumbnail
+  took the bullet's place. Owner's call, 2026-09-20.
+- **The List's band and chips pin under the status bar.** The canvas is a still frame and
+  has no opinion. The first divergence in this list says filtering is load-bearing on the
+  List; a control that scrolls out of reach isn't bearing anything.
+- **A List card with no photograph shows an outline rhomb in a bordered tile,** not the
+  canvas's 45° hatch. The hatch is the canvas's mark for a photograph not yet chosen or not
+  yet loaded; this tile means there isn't one, and an outline says "nothing here" where a
+  hatch says "wait".
 
 ---
 

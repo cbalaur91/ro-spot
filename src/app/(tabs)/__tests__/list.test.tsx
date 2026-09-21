@@ -1,16 +1,39 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+  waitFor,
+  within,
+} from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { Alert, Linking, Platform } from 'react-native';
 
 import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
 import { DEFAULT_ORIGIN } from '@/geo';
 import i18n from '@/i18n';
+import { directionsUrl } from '@/links';
 import { CategoryFilterProvider } from '@/state/categoryFilter';
 
 import ListScreen from '../list';
 
-jest.mock('@/data/places', () => ({ fetchApprovedPlaces: jest.fn() }));
+jest.mock('@/data/places', () => ({
+  fetchApprovedPlaces: jest.fn(),
+  // The real one asks the Supabase client for a public URL; what the row owes is
+  // that whatever comes back reaches the image, not how it was spelled.
+  placePhotoUrl: (path: string) => `https://cdn.test/place-photos/${path}`,
+}));
 jest.mock('@/hooks/useOrigin', () => ({ useOrigin: jest.fn() }));
+
+// `expo-image` is a native module. React Native's own Image takes the same
+// `source` and `onError`, and the id is how a test finds a picture that — being
+// inside a labelled button — has no role or name of its own.
+jest.mock('expo-image', () => {
+  const { Image } = jest.requireActual('react-native');
+  return { Image: (props: object) => <Image testID="thumbnail" {...props} /> };
+});
 
 // `mock`-prefixed so Jest lets the factory close over it.
 jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
@@ -68,11 +91,14 @@ beforeEach(async () => {
     isResolved: true,
     isUserLocation: true,
   });
+  jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+  jest.spyOn(Alert, 'alert').mockImplementation(() => {});
   await i18n.changeLanguage('en');
 });
 
 afterEach(() => {
   queryClient.clear();
+  jest.restoreAllMocks();
 });
 
 describe('List tab', () => {
@@ -199,6 +225,8 @@ describe('List tab', () => {
     // A filter the user set is not an invitation to submit — the CTA belongs to
     // the empty dataset only.
     expect(screen.queryByRole('button', { name: 'Add the first place' })).toBeNull();
+    // And the way back out of it is still on the screen.
+    expect(screen.getByRole('button', { name: 'Services' })).toBeTruthy();
   });
 
   it('invites a first submission when there is nothing to show', async () => {
@@ -209,6 +237,7 @@ describe('List tab', () => {
     expect(await screen.findByText('No places yet.')).toBeTruthy();
     expect(screen.getByText('Approved places show up here — the hora needs dancers.')).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Add the first place' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Services' })).toBeTruthy();
   });
 
   it('sends the first submission to the Add tab', async () => {
@@ -232,6 +261,146 @@ describe('List tab', () => {
       pathname: '/place/[id]',
       params: { id: bakery.id },
     });
+  });
+
+  it("shows the place's first photograph", async () => {
+    fetchApprovedPlaces.mockResolvedValue([seededPlace]);
+
+    await renderScreen(<ListScreen />);
+
+    const thumbnail = await screen.findByTestId('thumbnail');
+    expect(thumbnail.props.source.uri).toBe('https://cdn.test/place-photos/seed/st-george-1.jpg');
+  });
+
+  it('asks again for a photograph that failed, once the list is refreshed', async () => {
+    fetchApprovedPlaces.mockResolvedValue([seededPlace]);
+
+    await renderScreen(<ListScreen />);
+    fireEvent(await screen.findByTestId('thumbnail'), 'error');
+    await waitFor(() => expect(screen.queryByTestId('thumbnail')).toBeNull());
+
+    // A refetch inside the same millisecond would look like the same fetch.
+    jest.spyOn(Date, 'now').mockReturnValue(Date.now() + 1000);
+    await act(() => queryClient.refetchQueries());
+
+    expect(await screen.findByTestId('thumbnail')).toBeTruthy();
+  });
+
+  it('pins the filter bar on Android, where a section header does not stick by default', async () => {
+    jest.replaceProperty(Platform, 'OS', 'android');
+    fetchApprovedPlaces.mockResolvedValue([bakery]);
+
+    await renderScreen(<ListScreen />);
+    await screen.findByText(bakery.name);
+
+    // Two scroll views: the chips' own, which is horizontal, and the list.
+    const [list] = screen.container.queryAll(
+      (node) => node.type === 'RCTScrollView' && !node.props.horizontal
+    );
+    // 0 is the masthead; 1 is the band and the chips.
+    expect(list.props.stickyHeaderIndices).toEqual([1]);
+  });
+
+  it('keeps the ways out of the app beside the row, not inside it', async () => {
+    fetchApprovedPlaces.mockResolvedValue([{ ...bakery, phone: '(313) 555-1234' }]);
+
+    await renderScreen(<ListScreen />);
+
+    // A link inside a button is one a screen reader cannot reach.
+    const row = await screen.findByRole('button', { name: /Cofetăria Bucur/ });
+    expect(within(row).queryByRole('link')).toBeNull();
+    expect(screen.getAllByRole('link')).toHaveLength(2);
+  });
+
+  it('draws no image for a place nobody has photographed', async () => {
+    fetchApprovedPlaces.mockResolvedValue([{ ...seededPlace, photo_paths: [] }]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText(seededPlace.name)).toBeTruthy();
+    expect(screen.queryByTestId('thumbnail')).toBeNull();
+  });
+
+  it('stops showing a photograph that fails to load', async () => {
+    fetchApprovedPlaces.mockResolvedValue([seededPlace]);
+
+    await renderScreen(<ListScreen />);
+    fireEvent(await screen.findByTestId('thumbnail'), 'error');
+
+    await waitFor(() => expect(screen.queryByTestId('thumbnail')).toBeNull());
+  });
+
+  it('shows the description, and keeps it out of what the row is called', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByText(bakery.description)).toBeTruthy();
+    // Somebody else wrote it, at whatever length they liked: a screen reader gets
+    // what the row said before there was one.
+    expect(
+      screen.getByRole('button', {
+        name: 'Food & Drink, Cofetăria Bucur, 100 Woodward Ave, Detroit, MI, 0.6 mi',
+      })
+    ).toBeTruthy();
+  });
+
+  it('hands the way there to the maps app, without opening the place', async () => {
+    fetchApprovedPlaces.mockResolvedValue([bakery, notary]);
+
+    await renderScreen(<ListScreen />);
+    // Named with the place: two links both called "Directions" are one link.
+    await userEvent.press(await screen.findByRole('link', { name: 'Directions to Cofetăria Bucur' }));
+
+    expect(Linking.openURL).toHaveBeenCalledWith(directionsUrl(bakery, Platform.OS));
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('dials a place that gave a number, without opening the place', async () => {
+    fetchApprovedPlaces.mockResolvedValue([{ ...bakery, phone: '(313) 555-1234' }]);
+
+    await renderScreen(<ListScreen />);
+    await userEvent.press(await screen.findByRole('link', { name: 'Call Cofetăria Bucur' }));
+
+    expect(Linking.openURL).toHaveBeenCalledWith('tel:3135551234');
+    expect(mockPush).not.toHaveBeenCalled();
+  });
+
+  it('offers no call where there is nothing to dial', async () => {
+    fetchApprovedPlaces.mockResolvedValue([
+      bakery,
+      // A phone field is a text box, and people write in it.
+      { ...notary, phone: 'open 7 days' },
+    ]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findAllByRole('link', { name: /^Directions to/ })).toHaveLength(2);
+    expect(screen.queryByRole('link', { name: /^Call/ })).toBeNull();
+  });
+
+  it('says so when the device has nothing to open a link with', async () => {
+    jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no handler'));
+    fetchApprovedPlaces.mockResolvedValue([bakery]);
+
+    await renderScreen(<ListScreen />);
+    await userEvent.press(await screen.findByRole('link', { name: 'Directions to Cofetăria Bucur' }));
+
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith('This device has nothing that can open that link.')
+    );
+  });
+
+  it('names the actions in Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    fetchApprovedPlaces.mockResolvedValue([{ ...bakery, phone: '(313) 555-1234' }]);
+
+    await renderScreen(<ListScreen />);
+
+    expect(await screen.findByRole('link', { name: 'Traseu până la Cofetăria Bucur' })).toBeTruthy();
+    expect(screen.getByRole('link', { name: 'Sună la Cofetăria Bucur' })).toBeTruthy();
+    expect(screen.getByText('Traseu')).toBeTruthy();
+    expect(screen.getByText('Sună')).toBeTruthy();
   });
 
   it('offers a retry when loading fails', async () => {

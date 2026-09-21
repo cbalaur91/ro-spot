@@ -22,6 +22,13 @@ export default {
     // thing the user can do, not one per screen that offers it.
     retry: 'Try again',
     back: 'Back',
+    // The two ways a List card leaves the app. The short form is what is drawn;
+    // the long one is what a screen reader hears, because a list of eight links
+    // all called "Directions" is a list of one.
+    directions: 'Directions',
+    directionsTo: 'Directions to {{name}}',
+    call: 'Call',
+    callPlace: 'Call {{name}}',
   },
   filters: {
     label: 'Filter by category',
