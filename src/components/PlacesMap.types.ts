@@ -30,7 +30,7 @@ export type PlacesMapProps = {
   selectedId: string | undefined;
   /** A pin was tapped. The screen decides what that selects. */
   onSelect: (id: string) => void;
-  /** The map can take camera moves. */
+  /** The map is up and laid out, so it can take camera moves. */
   onReady: () => void;
   /** The user moved the map themselves — a pan, a pinch — not the camera. */
   onGesture: () => void;

@@ -1,4 +1,4 @@
-import { useImperativeHandle, useRef } from 'react';
+import { useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
@@ -72,6 +72,14 @@ export function PlacesMap({
 }: PlacesMapProps) {
   const map = useRef<MapView>(null);
   const size = useRef({ width: 0, height: 0 });
+  // Ready means both: the SDK is up and the view has a size a fit can use.
+  // Android can report the map ready before its first layout.
+  const [isLaidOut, setLaidOut] = useState(false);
+  const [isMapReady, setMapReady] = useState(false);
+  useEffect(() => {
+    if (isLaidOut && isMapReady) onReady();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isLaidOut, isMapReady]);
 
   useImperativeHandle(
     ref,
@@ -109,8 +117,9 @@ export function PlacesMap({
       onLayout={(event) => {
         const { width, height } = event.nativeEvent.layout;
         size.current = { width, height };
+        if (width > 0 && height > 0) setLaidOut(true);
       }}
-      onMapReady={onReady}
+      onMapReady={() => setMapReady(true)}
       // Pans and pinches, not the camera's own moves. `isGesture` is Google's
       // only; Apple Maps reports a pan through `onPanDrag`.
       onPanDrag={onGesture}

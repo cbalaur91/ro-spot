@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChips, ClearFilters } from '@/components/CategoryChips';
@@ -48,6 +48,12 @@ const FOOT_GAP = 12;
 // on both platforms now, and the canvas states the shadow that way — ink at 12%,
 // the palette's own colour rather than a second black.
 const CARD_SHADOW = { boxShadow: `0px 4px 14px ${colors.ink}1F` };
+
+/** How much of the map's foot a view covers, gap included; nothing when it's empty. */
+const measure =
+  (set: (inset: number) => void) =>
+  ({ nativeEvent }: LayoutChangeEvent) =>
+    set(nativeEvent.layout.height > 0 ? nativeEvent.layout.height + FOOT_GAP : 0);
 
 /**
  * The foot of the map, where everything the map can't say itself is said: the
@@ -289,8 +295,11 @@ export default function MapScreen() {
   };
 
   // Opened on what's close, once the map, the places and the location answer are
-  // all in — never on an interim guess that the fix then yanks away.
-  const isDataReady = !isPending && !isError;
+  // all in — never on an interim guess that the fix then yanks away. The places
+  // count as in once the card they bring has been measured: the card and the
+  // controls arrive in the same render as the rows, and a fit made before their
+  // layout would clear a foot of nothing and leave pins under the card.
+  const isDataReady = !isPending && !isError && footInset > 0;
   const frameOpening = useEffectEvent(() => {
     if (!openingOwed.current) return;
     openingOwed.current = false;
@@ -337,10 +346,7 @@ export default function MapScreen() {
           pointerEvents="box-none"
           className="absolute left-[14px] right-[14px]"
           style={{ bottom: FOOT_GAP }}
-          onLayout={(event) => {
-            const { height } = event.nativeEvent.layout;
-            setFitInset(height > 0 ? height + FOOT_GAP : 0);
-          }}
+          onLayout={measure(setFitInset)}
         >
           <MapControls
             locate={!isResolved ? 'pending' : isUserLocation ? 'device' : 'fallback'}
@@ -364,10 +370,7 @@ export default function MapScreen() {
           <View
             testID="map-card"
             pointerEvents="box-none"
-            onLayout={(event) => {
-              const { height } = event.nativeEvent.layout;
-              setFootInset(height > 0 ? height + FOOT_GAP : 0);
-            }}
+            onLayout={measure(setFootInset)}
           >
             {isError ? (
               <MapCard>

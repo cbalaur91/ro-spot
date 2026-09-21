@@ -505,9 +505,21 @@ const CLOSEST = 'Show the closest places on the map';
 const MY_LOCATION = 'Show my location on the map';
 const DETROIT = 'Show Metro Detroit on the map';
 
+// The card and the foot around it as a device lays them out: a card 100 tall,
+// the controls and their gap above it.
+async function measureFoot() {
+  await fireEvent(screen.getByTestId('map-card'), 'layout', {
+    nativeEvent: { layout: { x: 0, y: 120, width: 372, height: 100 } },
+  });
+  await fireEvent(screen.getByTestId('map-foot'), 'layout', {
+    nativeEvent: { layout: { x: 14, y: 368, width: 372, height: 220 } },
+  });
+}
+
 async function settle() {
-  // The pins are there once the places are.
+  // The pins are there once the places are, and the foot is measured after.
   await screen.findAllByTestId('marker');
+  await measureFoot();
 }
 
 describe('Map framing and controls', () => {
@@ -567,6 +579,31 @@ describe('Map framing and controls', () => {
     await act(async () => screen.getByTestId('map').props.onMapReady());
 
     expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+  });
+
+  it('waits for the card to be measured before the opening frame', async () => {
+    await renderScreen(<MapScreen />);
+    await screen.findAllByTestId('marker');
+    // The places are in, but the card they brought hasn't been laid out: a fit
+    // now would clear a foot of nothing.
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+
+    await measureFoot();
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  it('never frames once Detroit was pressed before the map was ready', async () => {
+    mockMapReadsReady = false;
+    useOrigin.mockReturnValue(DENIED);
+    await renderScreen(<MapScreen />);
+    await settle();
+    await userEvent.press(control(DETROIT));
+    const moves = mockAnimateToRegion.mock.calls.length;
+
+    await act(async () => screen.getByTestId('map').props.onMapReady());
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(moves);
   });
 
   it('waits for location without an interim move, then frames once', async () => {
@@ -656,6 +693,7 @@ describe('Map framing and controls', () => {
 
   it('reframes on the button, keeping a selection that is among the five', async () => {
     await renderScreen(<MapScreen />);
+    await settle();
     await pressPin('h3');
     // The user wandered off.
     await act(async () => screen.getByTestId('map').props.onPanDrag());
@@ -680,7 +718,12 @@ describe('Map framing and controls', () => {
     await renderScreen(<MapScreen />);
     await settle();
     await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
-    expect(framedIds(lastCamera())).toEqual(['h1', 'h2', 'h3', 'h4', 'h5']);
+    // The five nearest churches and not the sixth. The bakery just south of the
+    // device may fall inside the frame's clearance; it isn't one of the five.
+    expect(framedIds(lastCamera())).toEqual(
+      expect.arrayContaining(['h1', 'h2', 'h3', 'h4', 'h5'])
+    );
+    expect(framedIds(lastCamera())).not.toContain('h6');
 
     // The eighth-nearest church, then a second chip.
     await pressPin('h8');
@@ -757,12 +800,6 @@ describe('Map framing and controls', () => {
   it('pads the map for the card alone, and fits clear of the controls too', async () => {
     await renderScreen(<MapScreen />);
     await settle();
-    await fireEvent(screen.getByTestId('map-card'), 'layout', {
-      nativeEvent: { layout: { x: 0, y: 120, width: 372, height: 100 } },
-    });
-    await fireEvent(screen.getByTestId('map-foot'), 'layout', {
-      nativeEvent: { layout: { x: 14, y: 368, width: 372, height: 220 } },
-    });
 
     // The card and the gap under it: the Google logo stands just above the card.
     expect(screen.getByTestId('map').props.mapPadding.bottom).toBe(112);

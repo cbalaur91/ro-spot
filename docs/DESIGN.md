@@ -463,8 +463,10 @@ three places: the opening, every chip change, and the Closest places control.
 - One place and no user in the fit: `nearbyRegion` around it, the neighbourhood zoom.
 - Afterwards the selection stays only if it is among the five framed; otherwise the card
   goes back to following the nearest.
-- The **opening** frame runs once, when the map reports ready, the places have arrived and
-  location has answered (fix or not) — no interim move, no timeout. Anything the user does
+- The **opening** frame runs once, when the map reports ready and has a size, the places
+  have arrived and the card they bring has been measured, and location has answered (fix or
+  not) — no interim move, no timeout. A fit made before the card's layout would clear a foot
+  of nothing. Anything the user does
   to the map first cancels it for good: a pan or pinch (`onPanDrag`, or
   `onRegionChangeStart` with `isGesture`), a pin tap, or a press on an enabled control. The
   camera's own moves and a press on the disabled location control don't count. A chip
