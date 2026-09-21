@@ -9,6 +9,7 @@
 - Press a `Pressable` in tests with `await userEvent.press(el)`: under RN 0.86 + RNTL 14, `fireEvent.press` and a synthetic `click` both leave `onPress` uncalled, and the test fails as if the handler were wrong.
 - Give test `QueryClient`s `gcTime: 0`: react-query's default five-minute garbage-collection timer keeps the Node process alive, so Jest sits there for five minutes after the last assertion passes.
 - `render` and `renderHook` are both async in @testing-library/react-native 14 — an un-awaited `renderHook` returns before `result` exists, and every assertion reads `null`.
+- `fireEvent` is async in RNTL 14 too — un-awaited, the state it sets lands after the next assertion, which reads the render before the event. `await fireEvent(el, 'layout', …)`; and pass `{ includeHiddenElements: true }` to find a node hidden from accessibility.
 - Don't hand `refetch` straight to `onPress`/`onRefresh`: both call their callback with an argument, and react-query reads a gesture event as `RefetchOptions`. Wrap it once at the hook that returns it, not at each call site.
 - Make react-query notify synchronously in `jest.setup.js` (`notifyManager.setScheduler((cb) => cb())`): otherwise a batched notification lands after the test that scheduled it and React warns about an update outside `act()` on maybe one run in three.
 - Keep number *formatting* in the locale, not in a helper: `toFixed` hard-codes a `.` and Romanian writes `0,6`. A helper should decide precision and hand i18next a number.

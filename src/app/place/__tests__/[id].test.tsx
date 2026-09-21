@@ -1,11 +1,18 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, userEvent, waitFor } from '@testing-library/react-native';
+import {
+  fireEvent,
+  render,
+  screen,
+  userEvent,
+  waitFor,
+} from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { Alert, Linking } from 'react-native';
+import { Alert, Linking, Platform, StyleSheet } from 'react-native';
 
 import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
 import { DEFAULT_ORIGIN } from '@/geo';
 import i18n from '@/i18n';
+import { directionsUrl } from '@/links';
 
 import PlaceDetailScreen from '../[id]';
 
@@ -269,6 +276,131 @@ describe('Place detail', () => {
     await userEvent.press(screen.getByRole('button', { name: 'Report a problem' }));
 
     expect(mockPush).toHaveBeenCalledWith({ pathname: '/report/[id]', params: { id: 'a' } });
+  });
+
+  describe('Directions and Call', () => {
+    // What a pill's icon-and-label pair measures at its natural width, in the
+    // copy the screen lays out out of sight to decide between a row and a column.
+    // Hidden from a screen reader, which would otherwise hear every action twice.
+    async function measure(key: 'directions' | 'call', width: number) {
+      const copy = screen.getByTestId(`place-action-measure-${key}`, {
+        includeHiddenElements: true,
+      });
+      await fireEvent(copy, 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
+      });
+    }
+
+    async function layOutActions(width: number) {
+      await fireEvent(screen.getByTestId('place-actions'), 'layout', {
+        nativeEvent: { layout: { x: 0, y: 0, width, height: 44 } },
+      });
+    }
+
+    function direction() {
+      return StyleSheet.flatten(screen.getByTestId('place-actions-row').props.style)
+        .flexDirection;
+    }
+
+    it.each(['ios', 'android'] as const)(
+      'routes to the pin in the maps app %s has',
+      async (os) => {
+        jest.replaceProperty(Platform, 'OS', os);
+        fetchPlace.mockResolvedValue(cathedral);
+
+        await renderScreen(<PlaceDetailScreen />);
+
+        // Named with the place, as the List names it.
+        await userEvent.press(
+          await screen.findByRole('link', { name: `Directions to ${cathedral.name}` })
+        );
+        expect(Linking.openURL).toHaveBeenCalledWith(directionsUrl(cathedral, os));
+      }
+    );
+
+    it('offers to call when the number is dialable, beside the phone row', async () => {
+      fetchPlace.mockResolvedValue({ ...cathedral, phone: '(313) 555-1234' });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await userEvent.press(
+        await screen.findByRole('link', { name: `Call ${cathedral.name}` })
+      );
+      expect(Linking.openURL).toHaveBeenCalledWith('tel:3135551234');
+      // The contact row is still there, and still a link.
+      expect(screen.getByRole('link', { name: 'Call: (313) 555-1234' })).toBeTruthy();
+    });
+
+    it.each([
+      ['no number', null],
+      ['a number that cannot be dialed', 'call us!'],
+    ])('offers no Call for %s', async (_, phone) => {
+      fetchPlace.mockResolvedValue({ ...cathedral, phone });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findByRole('link', { name: `Directions to ${cathedral.name}` });
+      expect(screen.queryByRole('link', { name: `Call ${cathedral.name}` })).toBeNull();
+    });
+
+    it('says something when the device cannot open the route', async () => {
+      jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no handler'));
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await userEvent.press(
+        await screen.findByRole('link', { name: `Directions to ${cathedral.name}` })
+      );
+      await waitFor(() =>
+        expect(Alert.alert).toHaveBeenCalledWith(
+          'This device has nothing that can open that link.'
+        )
+      );
+    });
+
+    it('sits the pills side by side while both fit half the width', async () => {
+      fetchPlace.mockResolvedValue({ ...cathedral, phone: '313-555-1234' });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findByText(cathedral.name);
+      // 330 wide less a 10 gap leaves 160 a pill.
+      await layOutActions(330);
+      await measure('directions', 150);
+      await measure('call', 110);
+      expect(direction()).toBe('row');
+    });
+
+    it('stacks the pills when either would not fit half the width', async () => {
+      fetchPlace.mockResolvedValue({ ...cathedral, phone: '313-555-1234' });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findByText(cathedral.name);
+      await layOutActions(330);
+      // Enlarged text: Directions outgrows its half, and Call comes down with it.
+      await measure('directions', 190);
+      await measure('call', 110);
+      expect(direction()).toBe('column');
+
+      // …and goes back up when the text comes back down.
+      await measure('directions', 150);
+      expect(direction()).toBe('row');
+    });
+
+    it('measures nothing when Directions is alone, since it has the width', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findByText(cathedral.name);
+      expect(
+        screen.queryByTestId('place-action-measure-directions', {
+          includeHiddenElements: true,
+        })
+      ).toBeNull();
+    });
   });
 
   it('offers nothing to report on a place that is not here', async () => {

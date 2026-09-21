@@ -1,9 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Alert,
   Linking,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -18,7 +20,7 @@ import type { Place } from '@/data/places';
 import { distanceMiles, milesLabel } from '@/geo';
 import { useOrigin } from '@/hooks/useOrigin';
 import { usePlace } from '@/hooks/usePlace';
-import { telUrl, webUrl } from '@/links';
+import { directionsUrl, telUrl, webUrl } from '@/links';
 import { StarBand } from '@/motifs/Band';
 import { Diamond } from '@/motifs/Diamond';
 import { categoryColor, colors } from '@/theme';
@@ -140,6 +142,145 @@ function AddressLine({ place }: { place: Place }) {
   );
 }
 
+type PlaceAction = {
+  key: 'directions' | 'call';
+  variant: 'primary' | 'secondary';
+  icon: IconName;
+  label: string;
+  accessibilityLabel: string;
+  url: string;
+};
+
+/** Between the two pills, side by side or stacked. */
+const ACTION_GAP = 10;
+
+/**
+ * The primary and secondary pill recipes of `docs/DESIGN.md`, with an icon, at a
+ * 44 minimum that grows with the text.
+ *
+ * Both carry the outline's 1.5px cherry border — on the filled pill it vanishes
+ * into the fill, with the padding trimmed to match. Without it the pair is not
+ * equal width: Yoga won't flex a pill narrower than its padding and border, so
+ * the outlined one comes out 3 wider.
+ */
+const PILL =
+  'min-h-[44px] flex-row items-center justify-center gap-2 rounded-full border-[1.5px] border-cherry px-6 py-[11px]';
+const PILL_VARIANT = {
+  primary: 'bg-cherry active:opacity-80',
+  secondary: 'active:opacity-70',
+} as const;
+
+function PillFace({ action }: { action: PlaceAction }) {
+  const tint = action.variant === 'primary' ? colors.surface : colors.cherry;
+  return (
+    <>
+      <Ionicons name={action.icon} size={16} color={tint} />
+      <Text className="text-center text-[14px] font-semibold" style={{ color: tint }}>
+        {action.label}
+      </Text>
+    </>
+  );
+}
+
+/**
+ * What most visits to a place end in — going there, or ringing them — straight
+ * under where it is, rather than at the foot of everything it says about itself.
+ *
+ * Two pills share the width equally while both icon-and-label pairs fit in half
+ * of it, and stack full-width when either doesn't. Whether they fit is measured,
+ * not guessed from the font scale: Romanian labels, a narrow phone and enlarged
+ * text all move the line, and only the layout knows where it is. Each pair is
+ * laid out once more out of sight, at its natural width, and that copy is what
+ * gets compared — the visible pills can't be, because a stacked pill always fits.
+ */
+function PlaceActions({ place }: { place: Place }) {
+  const { t } = useTranslation();
+  const [width, setWidth] = useState(0);
+  const [naturalWidths, setNaturalWidths] = useState<
+    Partial<Record<PlaceAction['key'], number>>
+  >({});
+
+  // Un-dialable is the same as absent, as on the List card.
+  const callUrl = place.phone ? telUrl(place.phone) : null;
+  const actions: PlaceAction[] = [
+    {
+      key: 'directions',
+      variant: 'primary',
+      icon: 'navigate-outline',
+      label: t('actions.directions'),
+      accessibilityLabel: t('actions.directionsTo', { name: place.name }),
+      url: directionsUrl(place, Platform.OS),
+    },
+    ...(callUrl
+      ? [
+          {
+            key: 'call',
+            variant: 'secondary',
+            icon: 'call-outline',
+            label: t('actions.call'),
+            accessibilityLabel: t('actions.callPlace', { name: place.name }),
+            url: callUrl,
+          } as const,
+        ]
+      : []),
+  ];
+  const paired = actions.length > 1;
+  // A point short of half: a label measured at exactly the half can still wrap
+  // once the pill's edges are rounded to pixels.
+  const room = (width - ACTION_GAP) / 2 - 1;
+  // Side by side until there is a width to compare with: zero wide, nothing fits.
+  const stacked =
+    paired && width > 0 && actions.some(({ key }) => (naturalWidths[key] ?? 0) > room);
+
+  const open = (url: string) => {
+    Linking.openURL(url).catch(() => Alert.alert(t('detail.linkFailed')));
+  };
+
+  return (
+    <View
+      testID="place-actions"
+      onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
+      className="mt-4"
+    >
+      {paired
+        ? actions.map((action) => (
+            <View
+              key={action.key}
+              testID={`place-action-measure-${action.key}`}
+              pointerEvents="none"
+              accessibilityElementsHidden
+              importantForAccessibility="no-hide-descendants"
+              onLayout={(e) => {
+                const measured = e.nativeEvent.layout.width;
+                setNaturalWidths((prev) => ({ ...prev, [action.key]: measured }));
+              }}
+              className={`${PILL} ${PILL_VARIANT[action.variant]} absolute left-0 top-0`}
+              style={{ opacity: 0 }}
+            >
+              <PillFace action={action} />
+            </View>
+          ))
+        : null}
+      <View
+        testID="place-actions-row"
+        style={{ flexDirection: stacked ? 'column' : 'row', gap: ACTION_GAP }}
+      >
+        {actions.map((action) => (
+          <Pressable
+            key={action.key}
+            accessibilityRole="link"
+            accessibilityLabel={action.accessibilityLabel}
+            onPress={() => open(action.url)}
+            className={`${PILL} ${PILL_VARIANT[action.variant]} ${stacked ? '' : 'flex-1'}`}
+          >
+            <PillFace action={action} />
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 /**
  * The way back, floating over the photographs rather than sitting above them:
  * the hero runs to the top of the screen, so the chip is what keeps a dark
@@ -205,6 +346,7 @@ function PlaceBody({ place }: { place: Place }) {
           {place.name}
         </Text>
         <AddressLine place={place} />
+        <PlaceActions place={place} />
 
         {/* The signature, at the width of the text rather than the screen: here
             it divides a block of prose instead of underwriting a header. */}
@@ -223,7 +365,7 @@ function PlaceBody({ place }: { place: Place }) {
           </View>
         ) : null}
 
-        <ReportPill placeId={place.id} />
+        <ReportAction placeId={place.id} />
       </View>
     </ScrollView>
   );
@@ -233,12 +375,14 @@ function PlaceBody({ place }: { place: Place }) {
  * The way to tell the moderator a listing is wrong, at the foot of the body:
  * after everything the place says about itself, never in the way of it.
  *
- * Outlined in `line` rather than `cherry` — the secondary pill's border would
- * make it the loudest thing on a screen that is about the place. It opens the
- * report screen whether or not anyone is signed in: that screen asks for an
- * account, so signing in lands back on the report rather than here.
+ * Muted text rather than a pill, now that the screen has pills that are about
+ * the place — a third one here would compete with Directions for the eye. The
+ * underline is what says it can be pressed, and the vertical padding is what
+ * makes the target 44. It opens the report screen whether or not anyone is
+ * signed in: that screen asks for an account, so signing in lands back on the
+ * report rather than here.
  */
-function ReportPill({ placeId }: { placeId: string }) {
+function ReportAction({ placeId }: { placeId: string }) {
   const { t } = useTranslation();
   const router = useRouter();
 
@@ -246,9 +390,9 @@ function ReportPill({ placeId }: { placeId: string }) {
     <Pressable
       accessibilityRole="button"
       onPress={() => router.push({ pathname: '/report/[id]', params: { id: placeId } })}
-      className="mt-7 self-start rounded-full border-[1.5px] border-line px-6 py-[11px] active:opacity-70"
+      className="mt-5 min-h-[44px] justify-center self-start py-2.5 active:opacity-60"
     >
-      <Text className="text-[14px] font-semibold text-cherry">{t('detail.report')}</Text>
+      <Text className="text-[13px] text-muted underline">{t('detail.report')}</Text>
     </Pressable>
   );
 }
