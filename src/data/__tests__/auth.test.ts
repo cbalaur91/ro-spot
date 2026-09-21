@@ -4,9 +4,17 @@
  * really returns a session, that the session really survives a restart — are
  * the integration suite's job (`auth.integration.test.ts`).
  */
-import { AuthError } from '@supabase/supabase-js';
+import { AuthError, FunctionsHttpError } from '@supabase/supabase-js';
 
-import { AuthProblem, currentUser, onAuthChange, signIn, signOut, signUp } from '../auth';
+import {
+  AuthProblem,
+  currentUser,
+  deleteAccount,
+  onAuthChange,
+  signIn,
+  signOut,
+  signUp,
+} from '../auth';
 
 jest.mock('../supabase', () => ({
   supabase: {
@@ -17,6 +25,7 @@ jest.mock('../supabase', () => ({
       getSession: jest.fn(),
       onAuthStateChange: jest.fn(),
     },
+    functions: { invoke: jest.fn() },
   },
 }));
 
@@ -29,6 +38,7 @@ const { supabase } = jest.requireMock('../supabase') as {
       getSession: jest.Mock;
       onAuthStateChange: jest.Mock;
     };
+    functions: { invoke: jest.Mock };
   };
 };
 
@@ -202,6 +212,58 @@ describe('signOut', () => {
     supabase.auth.signOut.mockResolvedValue({ error: new AuthError('Failed to fetch', 0) });
 
     await expect(signOut()).rejects.toMatchObject({ reason: 'offline' });
+  });
+});
+
+describe('deleteAccount', () => {
+  it('asks the server to delete the account, then forgets the session on this device', async () => {
+    supabase.functions.invoke.mockResolvedValue({ data: null, error: null });
+    supabase.auth.signOut.mockResolvedValue({ error: null });
+
+    await deleteAccount();
+
+    expect(supabase.functions.invoke).toHaveBeenCalledWith('delete-account', { method: 'POST' });
+    // Local only: the account the session belonged to no longer exists, so
+    // there is nothing left on the server to revoke.
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+    expect(supabase.functions.invoke.mock.invocationCallOrder[0]).toBeLessThan(
+      supabase.auth.signOut.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('keeps the session when the server did not delete the account', async () => {
+    // Signing out here would leave someone with an account they believe is
+    // gone and no way back to the button that would delete it.
+    supabase.functions.invoke.mockResolvedValue({
+      data: null,
+      error: new Error('Edge Function returned a non-2xx status code'),
+    });
+
+    await expect(deleteAccount()).rejects.toThrow('Failed to delete account');
+    expect(supabase.auth.signOut).not.toHaveBeenCalled();
+  });
+
+  it('finishes signing out when the account was already deleted', async () => {
+    // A retry after a deletion whose answer never reached the phone: the
+    // server has nothing left to delete, and "try again" would be forever.
+    supabase.functions.invoke.mockResolvedValue({
+      data: null,
+      error: new FunctionsHttpError(new Response(null, { status: 410 })),
+    });
+    supabase.auth.signOut.mockResolvedValue({ error: null });
+
+    await expect(deleteAccount()).resolves.toBeUndefined();
+    expect(supabase.auth.signOut).toHaveBeenCalledWith({ scope: 'local' });
+  });
+
+  it('counts the account as deleted even if the local sign-out complains', async () => {
+    // supabase-js drops the local session before reporting a failed sign-out,
+    // and the account is already gone — an error now would ask the user to
+    // delete something that no longer exists.
+    supabase.functions.invoke.mockResolvedValue({ data: null, error: null });
+    supabase.auth.signOut.mockResolvedValue({ error: new AuthError('Failed to fetch', 0) });
+
+    await expect(deleteAccount()).resolves.toBeUndefined();
   });
 });
 

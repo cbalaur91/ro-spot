@@ -1342,3 +1342,37 @@ after 15 s; one control map instead of three `access` switches; stale fixtures u
 **Accepted:** a retry briefly un-resolves the origin app-wide (List note hides, detail
 distance hides) — honest while the device is being asked; Settings-without-grant leaves the
 Map's recentre outstanding until a fix or a touch (documented in DESIGN §4.1).
+
+## Issue #10 — In-app account deletion
+
+Seams: `deleteAccount()` in `src/data/auth.ts` (unit, supabase mocked); Edge Function
+`supabase/functions/delete-account` (integration suite against `rospot`, throwaway account);
+Profile tab suite (`@/data/auth` mocked). Places, reports and duplicate flags already cascade
+from `auth.users`; photos under `<uid>/` in `place-photos` do not — the function removes them
+first (retry-safe order: a failed user delete leaves an account that can try again).
+
+- [x] A. Unit tests first: `deleteAccount` invokes the function, then clears the local session;
+      a failed call throws and keeps the session → verify: fail, then pass
+- [x] B. Edge Function: caller from the bearer token, photos then user; `verify_jwt = false`
+      (checks the token itself) → verify: deployed with `--use-api`
+- [x] C. Integration: throwaway account with a pending place, photos and a report → delete →
+      sign-in fails, rows/photos gone; no token → 401 → verify: suite green
+- [x] D. Profile: quiet "Delete account" under Sign out; inline confirm step; failure message
+      → verify: profile suite EN+RO
+- [x] E. DESIGN.md §4.8 moved from "not built" to built → verify: read against code
+- [x] F. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [x] G. Emulator pass with a throwaway account (never the standing one) → verify: screenshots
+- [x] H. `/code-review`, fix, commit
+
+Done 2026-09-21 on `10-account-deletion`. Function deployed to `rospot` (`--use-api`,
+`verify_jwt = false`, token checked via `auth.getUser`). Integration 7/7 live; emulator pass
+with throwaway `emu-delete-10@rospot.test`: confirm card → delete → invitation; re-sign-in
+refused; admin check found no user/places/files. Shots `~/.cache/rospot-shots/10-*.png`.
+Standing account signed back in.
+**Review fixes:** order is places → photos → user (a failure never leaves public places with
+broken photos); a token whose user is gone gets 410 and the app finishes signing out (lost
+200 no longer loops "try again"); nested folders swept; Map/List/detail caches invalidated;
+card title takes TalkBack focus (not verified with TalkBack on the AVD).
+**Decided:** approved places go with their author ("owned data"), not only pending ones.
+**Flagged, not done:** the text-button shape (`py-[13px] … text-[13.5px] font-semibold`) now
+recurs 4× in Profile with no §3 recipe; other devices keep a working access token ≤1 h.

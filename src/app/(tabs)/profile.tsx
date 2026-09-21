@@ -1,12 +1,20 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  AccessibilityInfo,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { locality } from '@/address';
 import { Loading } from '@/components/ScreenState';
-import { type AuthUser, signOut } from '@/data/auth';
+import { type AuthUser, deleteAccount, signOut } from '@/data/auth';
 import type { Place } from '@/data/places';
 import { useMyPlaces } from '@/hooks/useMyPlaces';
 import { StarBand } from '@/motifs/Band';
@@ -195,6 +203,108 @@ function YourPlaces() {
 }
 
 /**
+ * Deleting the account: a store requirement, so it is present and it is quiet —
+ * a muted link under "Sign out" that asks before it does anything.
+ *
+ * The question opens in place as a card rather than a system alert: it says
+ * what goes with the account in the app's own words and type, and it works the
+ * same on every platform the app runs on, the web preview included.
+ */
+function DeleteAccount() {
+  const { t } = useTranslation();
+  const queryClient = useQueryClient();
+  const [step, setStep] = useState<'closed' | 'asking' | 'deleting' | 'failed'>('closed');
+  const title = useRef<Text>(null);
+  const isOpen = step !== 'closed';
+
+  // The link that was pressed has just unmounted, so a screen reader's focus
+  // would land nowhere: send it to the question instead.
+  useEffect(() => {
+    if (isOpen && title.current) {
+      AccessibilityInfo.sendAccessibilityEvent(title.current, 'focus');
+    }
+  }, [isOpen]);
+
+  async function confirm() {
+    setStep('deleting');
+    try {
+      await deleteAccount();
+      // The account's places went with it — approved ones too — so the Map,
+      // the List and any detail this device still holds must be read again.
+      // The tab itself needs nothing: the session ends, and the session state
+      // redraws it as the invitation, as after a sign-out.
+      void queryClient.invalidateQueries({ queryKey: ['places'] });
+      void queryClient.invalidateQueries({ queryKey: ['place'] });
+    } catch {
+      // The account is still there and so is the session — the card stays
+      // open with the same button, so trying again is one press.
+      setStep('failed');
+    }
+  }
+
+  if (step === 'closed') {
+    return (
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setStep('asking')}
+        // The same 44 target as "Sign out", by the same padding — and `-mt-3`
+        // so the two targets meet rather than float 38 apart: the padding
+        // already puts 26 between the labels.
+        className="-mt-3 self-start py-[13px] pr-3 active:opacity-70"
+      >
+        <Text className="text-[12.5px] text-muted">{t('profile.delete.action')}</Text>
+      </Pressable>
+    );
+  }
+
+  return (
+    <View className="rounded-xl border border-line bg-card px-[14px] pt-3">
+      <Text ref={title} className="text-[14px] font-semibold text-ink">
+        {t('profile.delete.title')}
+      </Text>
+      <Text className="mt-1 text-[12.5px] leading-[18px] text-muted">
+        {t('profile.delete.body')}
+      </Text>
+      {step === 'failed' ? (
+        <Text accessibilityLiveRegion="polite" className="mt-2 text-[12.5px] text-cherry">
+          {t('profile.delete.failed')}
+        </Text>
+      ) : null}
+
+      {step === 'deleting' ? (
+        // The buttons go while the request is out: a second press would only
+        // ask a function whose caller no longer exists.
+        <View className="flex-row items-center gap-2 py-[13px]">
+          <ActivityIndicator color={colors.cherry} />
+          <Text className="text-[12.5px] text-muted">{t('profile.delete.deleting')}</Text>
+        </View>
+      ) : (
+        <View className="flex-row flex-wrap gap-x-5">
+          <Pressable
+            accessibilityRole="button"
+            onPress={confirm}
+            className="py-[13px] pr-1 active:opacity-70"
+          >
+            <Text className="text-[13.5px] font-semibold text-cherry">
+              {t('profile.delete.confirm')}
+            </Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() => setStep('closed')}
+            className="py-[13px] pr-1 active:opacity-70"
+          >
+            <Text className="text-[13.5px] font-semibold text-ink">
+              {t('profile.delete.cancel')}
+            </Text>
+          </Pressable>
+        </View>
+      )}
+    </View>
+  );
+}
+
+/**
  * The account block, at the foot of the screen. Signing out is quiet — cherry
  * because it is the one action here, small because nobody comes to this tab to
  * leave.
@@ -236,6 +346,7 @@ function Account({ user }: { user: AuthUser }) {
         >
           <Text className="text-[13.5px] font-semibold text-cherry">{t('profile.signOut')}</Text>
         </Pressable>
+        <DeleteAccount />
       </View>
     </>
   );
@@ -244,9 +355,9 @@ function Account({ user }: { user: AuthUser }) {
 /**
  * Who you are here, what you have sent in, and the way out.
  *
- * The language toggle and account deletion are the design's other two blocks;
- * they arrive with the slices that give them something to show (#13, #10) and
- * slot in between "your places" and the account block.
+ * The language toggle is the design's other block; it arrives with the slice
+ * that gives it something to show (#13) and slots in between "your places" and
+ * the account block.
  */
 export default function ProfileScreen() {
   const { t } = useTranslation();

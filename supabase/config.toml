@@ -412,3 +412,8 @@ enabled = true
 # declarative_schema_path = "./schemas"
 # JSON string passed through to pg-delta SQL formatting.
 # format_options = "{\"keywordCase\":\"upper\",\"indent\":2,\"maxWidth\":80,\"commaStyle\":\"trailing\"}"
+
+# Account deletion (#10). It checks the session token itself, against the auth
+# server: the gateway's check knows only the legacy JWT secret.
+[functions.delete-account]
+verify_jwt = false

@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
+import { AccessibilityInfo } from 'react-native';
 
 import type { Place } from '@/data/places';
 import i18n from '@/i18n';
@@ -15,6 +16,7 @@ jest.mock('@/data/auth', () => ({
   currentUser: jest.fn(),
   onAuthChange: jest.fn(),
   signOut: jest.fn(),
+  deleteAccount: jest.fn(),
 }));
 
 // The same treatment for "your places": the read is the seam, the block under
@@ -26,10 +28,11 @@ jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 
 const mockPush = jest.fn();
 
-const { currentUser, onAuthChange, signOut } = jest.requireMock('@/data/auth') as {
+const { currentUser, onAuthChange, signOut, deleteAccount } = jest.requireMock('@/data/auth') as {
   currentUser: jest.Mock;
   onAuthChange: jest.Mock;
   signOut: jest.Mock;
+  deleteAccount: jest.Mock;
 };
 
 const { fetchMyPlaces } = jest.requireMock('@/data/submissions') as { fetchMyPlaces: jest.Mock };
@@ -251,5 +254,113 @@ describe('Profile tab, your places', () => {
 
     expect(await screen.findByText('Locurile tale')).toBeOnTheScreen();
     expect(screen.getByText('Aprobat')).toBeOnTheScreen();
+  });
+});
+
+describe('Profile tab, deleting the account', () => {
+  beforeEach(() => {
+    currentUser.mockResolvedValue(ana);
+  });
+
+  async function openConfirmation() {
+    await renderScreen(<ProfileScreen />);
+    await waitFor(() => expect(screen.getByText('ana.pop@example.com')).toBeOnTheScreen());
+    await userEvent.press(screen.getByRole('button', { name: 'Delete account' }));
+  }
+
+  it('asks first, and says what goes with the account', async () => {
+    await openConfirmation();
+
+    expect(screen.getByText('Delete your account?')).toBeOnTheScreen();
+    expect(
+      screen.getByText(
+        'Your account, the places you added — including any still waiting for review — and their photos are removed for good.'
+      )
+    ).toBeOnTheScreen();
+    // The first press only asks: nothing has been deleted yet.
+    expect(deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('takes a screen reader to the question it just asked', async () => {
+    // The link that was pressed is gone, so focus would otherwise land nowhere.
+    const focus = jest.spyOn(AccessibilityInfo, 'sendAccessibilityEvent').mockImplementation(() => {});
+
+    await openConfirmation();
+
+    expect(focus).toHaveBeenCalledWith(expect.anything(), 'focus');
+  });
+
+  it('keeps the account when the person changes their mind', async () => {
+    await openConfirmation();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Keep my account' }));
+
+    expect(screen.queryByText('Delete your account?')).not.toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Delete account' })).toBeOnTheScreen();
+    expect(deleteAccount).not.toHaveBeenCalled();
+  });
+
+  it('deletes on the second, explicit press, and the tab goes back to the invitation', async () => {
+    deleteAccount.mockResolvedValue(undefined);
+    await openConfirmation();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(deleteAccount).toHaveBeenCalledTimes(1);
+
+    // As with signing out, the session state redraws the tab, not the button.
+    await emitAuthChange(null);
+    await waitFor(() => expect(screen.getByText('Browsing needs no account.')).toBeOnTheScreen());
+  });
+
+  it('drops what this device remembers of the account’s places', async () => {
+    // An approved place goes with its author, so the Map and the List must not
+    // keep drawing it from the cache.
+    deleteAccount.mockResolvedValue(undefined);
+    const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+    await openConfirmation();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Delete my account' }));
+
+    await waitFor(() => expect(invalidate).toHaveBeenCalledWith({ queryKey: ['places'] }));
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ['place'] });
+  });
+
+  it('shows the deletion in progress, and cannot be pressed twice', async () => {
+    deleteAccount.mockImplementation(() => new Promise(() => {}));
+    await openConfirmation();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Delete my account' }));
+
+    expect(await screen.findByText('Deleting your account')).toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Delete my account' })).not.toBeOnTheScreen();
+    expect(screen.queryByRole('button', { name: 'Keep my account' })).not.toBeOnTheScreen();
+  });
+
+  it('says so when the deletion failed, and offers it again', async () => {
+    deleteAccount.mockRejectedValueOnce(new Error('Failed to delete account'));
+    await openConfirmation();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Delete my account' }));
+
+    expect(
+      await screen.findByText('Your account was not deleted. Check your connection and try again.')
+    ).toBeOnTheScreen();
+    expect(screen.getByText('ana.pop@example.com')).toBeOnTheScreen();
+
+    deleteAccount.mockResolvedValue(undefined);
+    await userEvent.press(screen.getByRole('button', { name: 'Delete my account' }));
+    expect(deleteAccount).toHaveBeenCalledTimes(2);
+  });
+
+  it('speaks Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    await renderScreen(<ProfileScreen />);
+    await waitFor(() => expect(screen.getByText('ana.pop@example.com')).toBeOnTheScreen());
+
+    await userEvent.press(screen.getByRole('button', { name: 'Șterge contul' }));
+
+    expect(screen.getByText('Ștergi contul?')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Șterge-mi contul' })).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Păstrează contul' })).toBeOnTheScreen();
   });
 });

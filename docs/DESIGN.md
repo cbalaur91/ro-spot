@@ -846,16 +846,30 @@ has other things on it: a spinner beside `text-[12.5px] text-muted` while it loa
 muted line plus a `text-[13.5px] font-semibold text-cherry` `actions.retry` at `py-[13px]`
 when the read failed, and one muted line inviting a first submission when there is nothing.
 
-Two blocks of the canvas's Profile are **not built yet** and arrive with the slices that
-give them something to show. They slot in between "your places" and the account block:
+**Delete account** (#10) sits right under "Sign out": plain `text-[12.5px] text-muted`,
+`self-start`, the same `py-[13px]` 44 target, pulled up by `-mt-3` against the block's
+`gap-3` so the two targets meet — their padding already puts 26 between the labels. Deletion is a store
+requirement, not a feature — it is present, and it is quiet. A press only asks: the link
+becomes a §3 card without a category border (`rounded-xl border border-line bg-card
+px-[14px] pt-3`) holding `profile.delete.title` in `text-[14px] font-semibold`, what goes
+with the account in `text-[12.5px] leading-[18px] text-muted`, then two text buttons at
+`py-[13px]`, `gap-x-5`: `profile.delete.confirm` ("Delete my account") in cherry and
+`profile.delete.cancel` ("Keep my account") in ink — each names what it does, where
+"Cancel" would not say which of the two it cancels. An inline card rather than a system
+alert: it speaks in the app's type and works the same on every platform, the web preview
+included. The pressed link unmounts, so the card's title takes screen-reader focus. While the request is out the buttons give way to a spinner and
+`profile.delete.deleting`; a failure keeps the card open with `profile.delete.failed` in
+`text-[12.5px] text-cherry` above the same buttons. Success needs no navigation — the
+session ends and the tab redraws as the invitation, as after a sign-out.
+
+One block of the canvas's Profile is **not built yet** and arrives with the slice that
+gives it something to show. It slots in between "your places" and the account block:
 
 - **Language** (#13) — the form label ("LANGUAGE"), then a segmented pill: `border
   border-line rounded-full p-[3px] bg-card`, two halves at `py-2`, the selected one filled
   cherry and full-round with a `text-[13px] font-semibold text-surface` label, the other
   `text-[13px] font-medium text-muted`. Labels are the language's own endonyms, "English"
   and "Română", untranslated.
-- **Delete account** (#10) — plain `text-[12.5px] text-muted` under "Sign out", `gap-3`.
-  Deletion is a store requirement, not a feature — it is present, and it is quiet.
 
 #### 4.9 Edit your place — `src/app/edit/[id].tsx`
 
