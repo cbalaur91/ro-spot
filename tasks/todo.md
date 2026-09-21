@@ -27,7 +27,7 @@ Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being check
 - [ ] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard
 - [ ] 15. i18n completeness pass (all UI strings RO+EN) → verify: no hardcoded strings on any screen in either locale
 - [ ] 16. Privacy policy page (hosted) + linked in app → verify: URL loads from the app
-- [ ] 17. Seed Metro Detroit places (owner provides 10–20; script inserts as approved) → verify: pins render on Detroit map
+- [x] 17. Seed Metro Detroit places (owner provides 10–20; script inserts as approved) → verified: pins render on Detroit map (#11, 6 places by owner's call)
 
 ---
 
@@ -1376,3 +1376,42 @@ card title takes TalkBack focus (not verified with TalkBack on the AVD).
 **Decided:** approved places go with their author ("owned data"), not only pending ones.
 **Flagged, not done:** the text-button shape (`py-[13px] … text-[13.5px] font-semibold`) now
 recurs 4× in Profile with no §3 recipe; other devices keep a working access token ≤1 h.
+
+## Issue #11 — Metro Detroit seed script
+
+Owner-approved list (2026-09-21, researched from parish directories, press and the businesses'
+own sites): Bar Gabi, Bucharest Grill (Jefferson, one pin for the chain), Holy Trinity (Troy),
+St. Nicholas (Troy), Descent of the Holy Spirit (Warren), Sts. Peter & Paul (Dearborn Heights).
+St. George stays as its migration left it. Photos: none yet (owner's call) — the script uploads
+whatever lands in `assets/seed-photos/<slug>/` on a later run.
+
+Seams: `scripts/seed/plan.ts` (pure: data + photo listing → rows + uploads, validated);
+`scripts/seed/metro-detroit.ts` (data, fixed ids); `scripts/seed-metro-detroit.ts` (IO: storage
+upsert, then PostgREST upsert on `id` with the service key).
+
+- [x] A. Tests first: plan maps places → approved rows with `author_id` null; photos sorted into
+      `seed/<slug>/<file>`; rejects >5 photos, non-`.jpg`, duplicate ids/slugs → verify: fail, then pass
+- [x] B. Data file + tests: ids unique and clear of St. George, coords inside Michigan → verify: suite
+- [x] C. IO script; run twice → verify: 6 rows, second run changes nothing (count by id)
+- [x] D. RLS suite: anon reads every seeded id → verify: integration green
+- [x] E. Gates: typecheck, lint, `npm test` → verify: all green
+- [x] F. Emulator: Detroit map shows the pins → verify: screenshot
+- [x] G. `/code-review`, fix, commit
+
+Done 2026-09-21 on `11-metro-detroit-seed`. `bun scripts/seed-metro-detroit.ts` run against
+`rospot`: 6 approved rows, once each after repeated runs, no duplicate flags. `npm test`
+555/555, typecheck + lint clean. Emulator: Map shows all 7 seeded pins around Detroit; the
+detail screen shows the no-photos state and working contact rows. Shot
+`~/.cache/rospot-shots/11-map-1.png`.
+**Review fixes:** status is set only on insert (a re-run rewrites fields and photos but
+never re-approves a place the moderator hid — proven by hiding Bar Gabi, re-running,
+restoring); the script finds `assets/seed-photos` from its own path and skips dotfiles and
+subfolders; the RLS check compares whole lists so a miss names the place; re-run rules
+(empty folder empties the gallery, renamed photos leave objects behind, replace a photo
+under a new name, a dropped place is left alone) are in the script header.
+**Accepted:** the RLS suite now also asserts the seed has run on the project — a deploy
+check, deliberately; the `seed/<slug>/<file>` layout supersedes the flat one sketched in the
+photos migration comment (noted in `plan.ts`, migration left as applied).
+**Flagged, not done:** an approved place named "Test" (9157 Dallas Dr, Grosse Ile, authored
+2026-09-20) is live on the map — owner to delete or reject. No photos yet: drop JPEGs into
+`assets/seed-photos/<slug>/` and re-run.
