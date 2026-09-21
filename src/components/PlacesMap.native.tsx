@@ -76,6 +76,10 @@ export function PlacesMap({
   // Android can report the map ready before its first layout.
   const [isLaidOut, setLaidOut] = useState(false);
   const [isMapReady, setMapReady] = useState(false);
+  // The padding the map mounted with, held until the SDK is up. Android defers
+  // a padding change only while the view has no size; laid out but not yet
+  // loaded, it calls `setPadding` on a null Google map and crashes (#44).
+  const [mountPadding] = useState(() => ({ top: 0, right: 0, bottom: footInset, left: 0 }));
   useEffect(() => {
     if (isLaidOut && isMapReady) onReady();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -135,7 +139,7 @@ export function PlacesMap({
       toolbarEnabled={false}
       // Keeps the Google logo — which has to stay visible — above whatever the
       // screen stands in the map's foot, and centres the map on what is left.
-      mapPadding={{ top: 0, right: 0, bottom: footInset, left: 0 }}
+      mapPadding={isMapReady ? { top: 0, right: 0, bottom: footInset, left: 0 } : mountPadding}
       // A pin tap picks a place for the card; the map stays where the user
       // left it. Android recentres on the marker otherwise.
       moveOnMarkerPress={false}
