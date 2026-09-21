@@ -12,9 +12,10 @@
  */
 import { createClient } from '@supabase/supabase-js';
 
+import { METRO_DETROIT_PLACES } from '../../../scripts/seed/metro-detroit';
 import type { Database } from '../database.types';
 import { SEEDED_APPROVED_PLACE, SEEDED_APPROVED_PLACE_ID } from '../fixtures';
-import { fetchApprovedPlaces, fetchPlace } from '../places';
+import { fetchApprovedPlaces, fetchPlace, type Place } from '../places';
 import { supabase } from '../supabase';
 
 const url = process.env.EXPO_PUBLIC_SUPABASE_URL!;
@@ -27,6 +28,8 @@ const anon = createClient<Database>(url, anonKey, {
 const serviceRole = createClient<Database>(url, serviceRoleKey, {
   auth: { persistSession: false, autoRefreshToken: false },
 });
+
+type SeedFields = Pick<Place, 'id' | 'name' | 'category' | 'address' | 'lat' | 'lng'>;
 
 // Owned by this suite rather than by a migration — a row that exists only to be
 // invisible has no business in permanent schema history.
@@ -113,6 +116,24 @@ describe('fetchApprovedPlaces', () => {
       category: SEEDED_APPROVED_PLACE.category,
       address: SEEDED_APPROVED_PLACE.address,
     });
+  });
+
+  // Proves `bun scripts/seed-metro-detroit.ts` has run against this project and
+  // that nothing has drifted from the list since.
+  it('returns every Metro Detroit launch place', async () => {
+    const places = await fetchApprovedPlaces();
+    // Compared as whole lists, so a miss names the place rather than failing on
+    // `undefined`.
+    const pick = ({ id, name, category, address, lat, lng }: SeedFields) => ({
+      id,
+      name,
+      category,
+      address,
+      lat,
+      lng,
+    });
+
+    expect(places.map(pick)).toEqual(expect.arrayContaining(METRO_DETROIT_PLACES.map(pick)));
   });
 
   it('returns no pending places', async () => {
