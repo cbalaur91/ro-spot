@@ -349,9 +349,12 @@ function WithoutHero({ children }: { children: React.ReactNode }) {
  * card-white from the very top edge, the Back chip in its flow, then one line
  * that wraps, over a hairline.
  */
+/** The compact header's message line, shared by the text and the rhomb beside it. */
+const HEADER_LINE = 18;
+
 function PlaceHeader({ message, onRetry }: { message: string; onRetry?: () => void }) {
-  // The message's line height as drawn: enlarged text scales it, and the box the
-  // rhomb is centred in has to scale with it.
+  // Enlarged text scales the message's line, and the box the rhomb is centred in
+  // has to scale with it.
   const { fontScale } = useWindowDimensions();
 
   return (
@@ -364,13 +367,18 @@ function PlaceHeader({ message, onRetry }: { message: string; onRetry?: () => vo
           <View className="flex-row items-start gap-3.5">
             {/* One text line tall, so the rhomb marks the message's first line
                 rather than the middle of the message and its Retry. */}
-            <View className="justify-center" style={{ height: 18 * fontScale }}>
+            <View className="justify-center" style={{ height: HEADER_LINE * fontScale }}>
               <Diamond size={10} tint="transparent" border={colors.line} />
             </View>
             {/* A column of its own, so the message and the Retry under it wrap
                 at the text's width rather than beside each other. */}
             <View className="flex-1 items-start gap-3">
-              <Text className="text-[13px] leading-[18px] text-muted">{message}</Text>
+              <Text
+                className="text-[13px] text-muted"
+                style={{ lineHeight: HEADER_LINE }}
+              >
+                {message}
+              </Text>
               {onRetry ? <RetryPill onPress={onRetry} /> : null}
             </View>
           </View>

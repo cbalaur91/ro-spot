@@ -158,10 +158,10 @@ shape, and undoing it belongs to the content.
 Native is border-box. A canvas rhomb stated as 13px with a 2px border is 17px of view. Add
 the border twice when porting a size.
 
-The photo gallery's page marks are the last rhombs that are *not* `Diamond` — they were
-drawn by hand before anything else needed an outline, and the tests find the current page
-by their `testID`s. Every outline-only rhomb is `Diamond` with a `transparent` tint and a
-`border`, which turned out to need no new variant. The place card's 9px tint bullet is gone: a thumbnail stands where it stood.
+Every rhomb is `Diamond`, the gallery's page marks included — they were drawn by hand
+before anything else needed an outline, and moved over with #32. An outline-only rhomb is a
+`transparent` tint and a `border`, which turned out to need no new variant. The place card's
+9px tint bullet is gone: a thumbnail stands where it stood.
 
 ---
 
@@ -354,7 +354,7 @@ for the same reason should not look like two different problems.
 - `Loading` — `ActivityIndicator` in cherry over `text-[13px] text-muted`
 - `LoadFailed` — `cloud-offline-outline` 28 in muted, `text-[15px] text-ink`, then a primary
   pill reading `actions.retry`
-- `RetryPill` — the secondary pill reading `actions.retry`, at `min-h-[44px] px-5`, its label
+- `RetryPill` — the secondary pill reading `actions.retry`, at `min-h-[44px]`, its label
   free to wrap. For asking again for something smaller than a screen — a photograph, or all
   of a place's photographs — where the screen around it loaded and already has its filled
   pill. Label it when the word alone doesn't say what is retried (`detail.retryPhoto`).
@@ -566,7 +566,9 @@ target. Over a hero it **floats**: absolute, held clear of the status bar by a t
 depend on), rendered after the scroll view so it paints over the photographs. It floats
 **only over a real photograph** — everywhere else (the compact header below; loading, error
 and not-found) it is the first thing in the flow, at `pl-2`, so at enlarged text nothing
-runs under it.
+runs under it. "Over a photograph" means over the gallery, whatever state its page is in: it
+still floats over a page that is loading or failed, whose content is centred in a 4:3 page
+tall enough to stay clear of the chip at 2× text.
 
 **The compact header** stands where the hero would when there is no photograph to show — a
 place nobody has photographed yet, or one whose every photograph failed. A 4:3 box of
@@ -574,12 +576,12 @@ nothing was a third of the screen that read as "still loading". Recipe: full-ble
 from the very top edge, closed by `border-b border-line`; inside a top-edge `SafeAreaView`,
 the back chip in flow, then a message row — `min-h-[96px] justify-center py-4` at the 22
 measure, a 10px outline rhomb (`Diamond`, `transparent`, `line` border) beside a column
-holding the message `text-[13px] leading-[18px] text-muted`, wrapping. The rhomb sits in a
-box one text line tall (`18 × fontScale`), so it marks the message's first line rather than
-the middle of the message and its Retry. No photos says `detail.noPhotos` and offers
+holding the message `text-[13px] text-muted` at `HEADER_LINE` (18), wrapping. The rhomb sits
+in a box one text line tall (`HEADER_LINE × fontScale`), so it marks the message's first line
+rather than the middle of the message and its Retry. No photos says `detail.noPhotos` and offers
 nothing; every photo failed says `detail.photosFailed` with a `RetryPill` under the message,
 in the column, so it has the column's width to wrap in. That Retry asks for every photograph
-again.
+again, in a gallery that starts over at the first page.
 
 Body at the 22 measure: 11px eyebrow, name `text-[23px] leading-[29px] font-semibold`,
 address line, the actions at `mt-4`, a 10px star band divider at `my-4`, then the

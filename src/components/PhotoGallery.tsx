@@ -91,16 +91,13 @@ function PageMarks({ count, current }: { count: number; current: number }) {
   return (
     <View className="mt-3 flex-row justify-center gap-2">
       {Array.from({ length: count }, (_, index) => (
-        <View
-          key={index}
-          testID={`page-mark-${index}${index === current ? '-current' : ''}`}
-          className="h-1.5 w-1.5 rotate-45"
-          style={
-            index === current
-              ? { backgroundColor: colors.ink }
-              : { borderWidth: 1, borderColor: colors.line }
-          }
-        />
+        <View key={index} testID={`page-mark-${index}${index === current ? '-current' : ''}`}>
+          {index === current ? (
+            <Diamond size={6} tint={colors.ink} />
+          ) : (
+            <Diamond size={6} tint="transparent" border={colors.line} />
+          )}
+        </View>
       ))}
     </View>
   );

@@ -67,7 +67,7 @@ export function RetryPill({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel}
       onPress={onPress}
-      className="min-h-[44px] items-center justify-center rounded-full border-[1.5px] border-cherry px-5 py-[11px] active:opacity-70"
+      className="min-h-[44px] items-center justify-center rounded-full border-[1.5px] border-cherry px-6 py-[11px] active:opacity-70"
     >
       <Text className="text-center text-[14px] font-semibold text-cherry">
         {t('actions.retry')}

@@ -277,6 +277,21 @@ describe('Place detail', () => {
       expect(currentPage()).toBe(0);
     });
 
+    it('starts over when another place comes back with the same photos', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await failPhoto(0);
+
+      fetchPlace.mockResolvedValue({ ...cathedral, id: 'b' });
+      await act(() => queryClient.refetchQueries());
+
+      await waitFor(() => expect(screen.getAllByRole('image')).toHaveLength(2));
+      expect(screen.queryByText('Photo unavailable')).toBeNull();
+    });
+
     it('says a photo is unavailable in Romanian too', async () => {
       await i18n.changeLanguage('ro');
       fetchPlace.mockResolvedValue(cathedral);
