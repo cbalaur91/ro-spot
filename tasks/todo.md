@@ -1308,3 +1308,37 @@ the photo (`readPhoto` doesn't check `response.ok`?). Pre-existing, needs its ow
 **Decided:** loading/error/not-found also put Back in the flow; the chip still floats over a
 loading or failed gallery page (the hero is the gallery). **Not verified:** iOS; that a
 per-page retry re-requests over the network (a fresh `expo-image` mount is what the test proves).
+
+## Issue #34 — Let users enable location after a denial or failure
+
+Entry points (owner, 2026-09-21): a "Use my location" pill above Detroit on the Map, and an
+action under the List's fallback-origin note. Seams: `useOrigin` suite (expo-location +
+AppState + Linking mocked), map and list screen suites (useOrigin mocked).
+
+- [x] A. Tests first: `LocationProvider` shares one origin; `enableLocation` re-asks when the
+      OS can, opens Settings when it can't (`canAskAgain: false`), retries a failed fix,
+      re-checks silently on return to foreground → verify: fail on main's hook
+- [x] B. Implement provider in `useOrigin.tsx`, mount at root → verify: suite green, typecheck
+- [x] C. Map: "Use my location" / "Location settings" pill on fallback; a fix it asked for
+      recentres → verify: map suite
+- [x] D. List: "Use my location" / "Open settings" under the fallback note → verify: list suite, EN+RO
+- [x] E. DESIGN.md §4.1/§4.2 (drop "never asks again") → verify: read against code
+- [x] F. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [~] G. Emulator pass: deny → retry → grant; deny twice → Settings → return → verify: screenshots
+- [x] H. `/code-review`, fix, commit
+
+Done 2026-09-21 (uncommitted→committed on `34-enable-location`). Unit suites 453/453, full
+`npm test` 512/512 before the review fixes (integration then hit the Supabase sign-up rate
+limit on re-runs — unrelated), typecheck + lint clean, Android export OK.
+**Emulator, passed:** denied → Map shows "Use my location" above Detroit, List shows the
+action under the note; tap re-prompts; second denial flips to "Location settings"; tap opens
+system Settings. Shots `~/.cache/rospot-shots/34-*.png`.
+**Emulator, not verified:** the fix itself — the `rospot` AVD never delivers a position to
+`getCurrentPositionAsync` (times out even on a cold launch with permission granted, i.e.
+main's path too), so "return from Settings → measured from you" and the Map recentre are
+proven by tests only. Needs a device pass (#21).
+**Review fixes:** a press during the silent re-check is queued, not dropped; fixes time out
+after 15 s; one control map instead of three `access` switches; stale fixtures updated.
+**Accepted:** a retry briefly un-resolves the origin app-wide (List note hides, detail
+distance hides) — honest while the device is being asked; Settings-without-grant leaves the
+Map's recentre outstanding until a fix or a touch (documented in DESIGN §4.1).

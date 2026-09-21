@@ -7,12 +7,24 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CategoryChips, ClearFilters } from '@/components/CategoryChips';
 import { PlaceRow } from '@/components/PlaceRow';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
+import type { Origin } from '@/hooks/useOrigin';
 import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
 import { HoraBand, StarBand } from '@/motifs/Band';
 import { useCategoryFilter } from '@/state/categoryFilter';
 
-/** The top of the page: the name, what it is, and — once — where distances are from. */
-function Masthead({ showOriginNote }: { showOriginNote: boolean }) {
+/**
+ * The top of the page: the name, what it is, and — once — where distances are
+ * from, with the way to measure from the user instead.
+ */
+function Masthead({
+  showOriginNote,
+  access,
+  onEnable,
+}: {
+  showOriginNote: boolean;
+  access: Origin['access'];
+  onEnable: () => void;
+}) {
   const { t } = useTranslation();
 
   return (
@@ -25,9 +37,23 @@ function Masthead({ showOriginNote }: { showOriginNote: boolean }) {
       {showOriginNote ? (
         // Said once, plainly: the order is real, it's just measured from
         // downtown rather than from you.
-        <Text className="mt-3 text-[12px] leading-[18px] text-muted">
-          {t('list.fallbackOrigin')}
-        </Text>
+        <>
+          <Text className="mt-3 text-[12px] leading-[18px] text-muted">
+            {t('list.fallbackOrigin')}
+          </Text>
+          {/* Bare, as Clear is: a way out the note already explains. Settings
+              once the OS won't ask again, and it says so rather than opening
+              somewhere the user didn't expect. */}
+          <Pressable
+            accessibilityRole="button"
+            onPress={onEnable}
+            className="min-h-[44px] justify-center self-start active:opacity-60"
+          >
+            <Text className="text-[13px] font-semibold text-cherry">
+              {t(access === 'ask' ? 'list.enable' : 'list.settings')}
+            </Text>
+          </Pressable>
+        </>
       ) : null}
     </View>
   );
@@ -127,6 +153,8 @@ export default function ListScreen() {
     places,
     isResolved,
     isUserLocation,
+    access,
+    enableLocation,
     isPending,
     isError,
     isRefetching,
@@ -136,6 +164,9 @@ export default function ListScreen() {
   // Only once the device has answered: saying "distances are from downtown"
   // while the prompt is still up would be a claim we can't yet make.
   const showOriginNote = isResolved && !isUserLocation;
+  const masthead = (
+    <Masthead showOriginNote={showOriginNote} access={access} onEnable={enableLocation} />
+  );
   // One section, because a section header is the list's own word for "the part
   // that pins". The key is what keeps the chip row mounted across a refilter.
   const sections = useMemo(() => [{ key: 'places', data: places }], [places]);
@@ -161,7 +192,7 @@ export default function ListScreen() {
   if (isPending || isError) {
     return (
       <SafeAreaView className="flex-1 bg-surface" edges={['top']}>
-        <Masthead showOriginNote={showOriginNote} />
+        {masthead}
         <FilterBar />
         {isPending ? (
           <Loading label={t('list.loading')} />
@@ -180,7 +211,7 @@ export default function ListScreen() {
         keyExtractor={(place) => place.id}
         ListHeaderComponent={
           <View onLayout={(event) => (mastheadHeight.current = event.nativeEvent.layout.height)}>
-            <Masthead showOriginNote={showOriginNote} />
+            {masthead}
           </View>
         }
         onScroll={(event) => (offset.current = event.nativeEvent.contentOffset.y)}

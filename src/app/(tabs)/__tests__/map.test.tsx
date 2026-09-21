@@ -4,6 +4,7 @@ import type { ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
 
 import { DEFAULT_ORIGIN, DEFAULT_REGION, nearbyRegion } from '@/geo';
+import type { Origin } from '@/hooks/useOrigin';
 import i18n from '@/i18n';
 import { CategoryFilterProvider } from '@/state/categoryFilter';
 
@@ -126,6 +127,8 @@ beforeEach(async () => {
     origin: DEFAULT_ORIGIN,
     isResolved: true,
     isUserLocation: false,
+    access: 'ask',
+    enableLocation: jest.fn(),
   });
   await i18n.changeLanguage('en');
 });
@@ -253,9 +256,8 @@ describe('Map tab', () => {
 
     // Location resolves next to the cathedral and the list re-sorts under it.
     useOrigin.mockReturnValue({
+      ...DENIED,
       origin: { lat: cathedral.lat, lng: cathedral.lng },
-      isResolved: true,
-      isUserLocation: false,
     });
     await rerender(wrap(<MapScreen />));
 
@@ -267,9 +269,8 @@ describe('Map tab', () => {
     await pressPin(bakery.id);
 
     useOrigin.mockReturnValue({
+      ...DENIED,
       origin: { lat: cathedral.lat, lng: cathedral.lng },
-      isResolved: true,
-      isUserLocation: false,
     });
     await rerender(wrap(<MapScreen />));
 
@@ -458,9 +459,13 @@ describe('Map tab', () => {
 // Somewhere north-west of the fallback, so a frame around the device can't be
 // mistaken for one around downtown Detroit.
 const DEVICE = { lat: 42.4734, lng: -83.2219 };
-const FIX = { origin: DEVICE, isResolved: true, isUserLocation: true };
-const DENIED = { origin: DEFAULT_ORIGIN, isResolved: true, isUserLocation: false };
-const LOCATING = { origin: DEFAULT_ORIGIN, isResolved: false, isUserLocation: false };
+const mockEnable = jest.fn();
+const LOCATION = { access: 'ask' as Origin['access'], enableLocation: mockEnable };
+const FIX = { ...LOCATION, origin: DEVICE, isResolved: true, isUserLocation: true };
+const DENIED = { ...LOCATION, origin: DEFAULT_ORIGIN, isResolved: true, isUserLocation: false };
+const LOCATING = { ...LOCATION, origin: DEFAULT_ORIGIN, isResolved: false, isUserLocation: false };
+// Denied for good: the OS won't prompt again, so the way on is Settings.
+const BLOCKED = { ...DENIED, access: 'settings' as const };
 
 // Eight historic places strung north of the device, ~3.5 miles apart, and a
 // bakery just south of it — the nearest place of all.
@@ -504,6 +509,8 @@ const control = (name: string) => screen.getByRole('button', { name });
 const CLOSEST = 'Show the closest places on the map';
 const MY_LOCATION = 'Show my location on the map';
 const DETROIT = 'Show Metro Detroit on the map';
+const ENABLE = 'Turn on location to measure distances from where you are';
+const SETTINGS = 'Open settings to turn on location for RoSpot';
 
 // The card and the foot around it as a device lays them out: a card 100 tall,
 // the controls and their gap above it.
@@ -795,6 +802,100 @@ describe('Map framing and controls', () => {
 
     expect(within(control('Arată pe hartă cele mai apropiate locuri')).getByText('Cele mai apropiate')).toBeTruthy();
     expect(within(control('Arată zona Detroit pe hartă')).getByText('Detroit')).toBeTruthy();
+  });
+
+  describe('turning location on from the fallback', () => {
+    it('offers it above Detroit, and asks when pressed', async () => {
+      useOrigin.mockReturnValue(DENIED);
+      await renderScreen(<MapScreen />);
+      await settle();
+
+      expect(within(control(ENABLE)).getByText('Use my location')).toBeTruthy();
+      const labels = screen
+        .getAllByRole('button')
+        .map((button) => button.props.accessibilityLabel)
+        .filter((label) => [CLOSEST, ENABLE, DETROIT].includes(label));
+      expect(labels).toEqual([CLOSEST, ENABLE, DETROIT]);
+
+      await userEvent.press(control(ENABLE));
+      expect(mockEnable).toHaveBeenCalledTimes(1);
+    });
+
+    it('says Settings when the OS will no longer ask', async () => {
+      useOrigin.mockReturnValue(BLOCKED);
+      await renderScreen(<MapScreen />);
+      await settle();
+
+      expect(within(control(SETTINGS)).getByText('Location settings')).toBeTruthy();
+      await userEvent.press(control(SETTINGS));
+      expect(mockEnable).toHaveBeenCalledTimes(1);
+    });
+
+    it('is not offered with a fix, or while location is still answering', async () => {
+      useOrigin.mockReturnValue(FIX);
+      const { rerender } = await renderScreen(<MapScreen />);
+      await settle();
+      expect(screen.queryByRole('button', { name: ENABLE })).toBeNull();
+
+      await relocate(LOCATING, rerender);
+      expect(screen.queryByRole('button', { name: ENABLE })).toBeNull();
+    });
+
+    it('shows the user where they are once the fix they asked for arrives', async () => {
+      useOrigin.mockReturnValue(DENIED);
+      const { rerender } = await renderScreen(<MapScreen />);
+      await settle();
+      await userEvent.press(control(ENABLE));
+
+      await relocate(LOCATING, rerender);
+      await relocate(FIX, rerender);
+
+      expect(lastCamera()).toEqual(nearbyRegion(DEVICE));
+    });
+
+    it('leaves the camera alone for a fix nobody asked for here', async () => {
+      useOrigin.mockReturnValue(DENIED);
+      const { rerender } = await renderScreen(<MapScreen />);
+      await settle();
+      const moves = mockAnimateToRegion.mock.calls.length;
+
+      await relocate(FIX, rerender);
+
+      expect(mockAnimateToRegion).toHaveBeenCalledTimes(moves);
+    });
+
+    it('leaves the camera alone when the user moved the map before the fix', async () => {
+      useOrigin.mockReturnValue(DENIED);
+      const { rerender } = await renderScreen(<MapScreen />);
+      await settle();
+      await userEvent.press(control(ENABLE));
+      await act(async () => screen.getByTestId('map').props.onPanDrag());
+      const moves = mockAnimateToRegion.mock.calls.length;
+
+      await relocate(FIX, rerender);
+
+      expect(mockAnimateToRegion).toHaveBeenCalledTimes(moves);
+    });
+
+    it('names it in Romanian', async () => {
+      await i18n.changeLanguage('ro');
+      useOrigin.mockReturnValue(DENIED);
+      const { rerender } = await renderScreen(<MapScreen />);
+      await settle();
+
+      expect(
+        within(control('Activează localizarea ca distanțele să fie măsurate de unde ești')).getByText(
+          'Folosește locația mea'
+        )
+      ).toBeTruthy();
+
+      await relocate(BLOCKED, rerender);
+      expect(
+        within(control('Deschide setările ca să activezi localizarea pentru RoSpot')).getByText(
+          'Setări localizare'
+        )
+      ).toBeTruthy();
+    });
   });
 
   it('pads the map for the card alone, and fits clear of the controls too', async () => {

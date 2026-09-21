@@ -95,6 +95,8 @@ beforeEach(async () => {
     origin: DEFAULT_ORIGIN,
     isResolved: true,
     isUserLocation: true,
+    access: 'ask',
+    enableLocation: jest.fn(),
   });
   jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
   jest.spyOn(Alert, 'alert').mockImplementation(() => {});
@@ -170,6 +172,8 @@ describe('List tab', () => {
       origin: DEFAULT_ORIGIN,
       isResolved: true,
       isUserLocation: false,
+      access: 'ask',
+      enableLocation: jest.fn(),
     });
     fetchApprovedPlaces.mockResolvedValue([bakery]);
 
@@ -182,11 +186,79 @@ describe('List tab', () => {
     ).toBeTruthy();
   });
 
+  describe('turning location on from the note', () => {
+    const enableLocation = jest.fn();
+    const fallback = (access: 'ask' | 'settings') =>
+      useOrigin.mockReturnValue({
+        origin: DEFAULT_ORIGIN,
+        isResolved: true,
+        isUserLocation: false,
+        access,
+        enableLocation,
+      });
+
+    it('asks again from under the note', async () => {
+      fallback('ask');
+      fetchApprovedPlaces.mockResolvedValue([bakery]);
+      await renderScreen(<ListScreen />);
+
+      await userEvent.press(await screen.findByRole('button', { name: 'Use my location' }));
+
+      expect(enableLocation).toHaveBeenCalledTimes(1);
+    });
+
+    it('opens Settings once the OS will no longer ask', async () => {
+      fallback('settings');
+      fetchApprovedPlaces.mockResolvedValue([bakery]);
+      await renderScreen(<ListScreen />);
+
+      await userEvent.press(await screen.findByRole('button', { name: 'Open settings' }));
+
+      expect(enableLocation).toHaveBeenCalledTimes(1);
+    });
+
+    it('is offered while the places are still loading', async () => {
+      fallback('ask');
+      fetchApprovedPlaces.mockReturnValue(new Promise(() => {}));
+      await renderScreen(<ListScreen />);
+
+      expect(screen.getByRole('button', { name: 'Use my location' })).toBeTruthy();
+    });
+
+    it('is not offered with a fix', async () => {
+      fetchApprovedPlaces.mockResolvedValue([bakery]);
+      await renderScreen(<ListScreen />);
+
+      await screen.findByText(bakery.name);
+      expect(screen.queryByRole('button', { name: 'Use my location' })).toBeNull();
+    });
+
+    it('speaks Romanian', async () => {
+      await i18n.changeLanguage('ro');
+      fallback('ask');
+      fetchApprovedPlaces.mockResolvedValue([bakery]);
+      const { rerender } = await renderScreen(<ListScreen />);
+      expect(await screen.findByRole('button', { name: 'Folosește locația mea' })).toBeTruthy();
+
+      fallback('settings');
+      await rerender(
+        <QueryClientProvider client={queryClient}>
+          <CategoryFilterProvider>
+            <ListScreen />
+          </CategoryFilterProvider>
+        </QueryClientProvider>
+      );
+      expect(screen.getByRole('button', { name: 'Deschide setările' })).toBeTruthy();
+    });
+  });
+
   it('stays quiet about the origin while the permission prompt is still up', async () => {
     useOrigin.mockReturnValue({
       origin: DEFAULT_ORIGIN,
       isResolved: false,
       isUserLocation: false,
+      access: 'ask',
+      enableLocation: jest.fn(),
     });
     fetchApprovedPlaces.mockResolvedValue([bakery]);
 

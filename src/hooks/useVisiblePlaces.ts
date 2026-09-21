@@ -5,7 +5,7 @@ import { fetchApprovedPlaces, type Place } from '@/data/places';
 import { nearestFirst, type Coords } from '@/geo';
 import { useCategoryFilter } from '@/state/categoryFilter';
 
-import { useOrigin } from './useOrigin';
+import { useOrigin, type Origin } from './useOrigin';
 
 /** A place with the distance the list was ordered by already worked out. */
 export type PlaceWithDistance = Place & { miles: number };
@@ -17,6 +17,9 @@ export type VisiblePlaces = {
   isResolved: boolean;
   /** False while distances are measured from the fallback, not the device. */
   isUserLocation: boolean;
+  /** How the user gets out of the fallback — see `useOrigin`. */
+  access: Origin['access'];
+  enableLocation: () => void;
   isPending: boolean;
   isError: boolean;
   isRefetching: boolean;
@@ -34,7 +37,7 @@ export type VisiblePlaces = {
  * hands both of them the same cached rows.
  */
 export function useVisiblePlaces(): VisiblePlaces {
-  const { origin, isResolved, isUserLocation } = useOrigin();
+  const { origin, isResolved, isUserLocation, access, enableLocation } = useOrigin();
   const { matches } = useCategoryFilter();
 
   const query = useQuery({
@@ -55,6 +58,8 @@ export function useVisiblePlaces(): VisiblePlaces {
     origin,
     isResolved,
     isUserLocation,
+    access,
+    enableLocation,
     isPending: query.isPending,
     isError: query.isError,
     isRefetching: query.isRefetching,
