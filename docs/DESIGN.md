@@ -261,6 +261,7 @@ only above an input or a group (§4.5, §4.8).
 |---|---|
 | Primary (filled) | `rounded-full bg-cherry`, label `text-[14px] font-semibold text-surface`, `px-6 py-3`, `active:opacity-80`. The one thing to do on a screen that failed. |
 | Secondary (outlined) | `rounded-full border-[1.5px] border-cherry`, label `text-[14px] font-semibold text-cherry`, `px-6 py-[11px]`, `active:opacity-70`. An invitation rather than the app insisting. |
+| With an icon | Either recipe plus `min-h-[44px] flex-row items-center justify-center gap-2`, a 16px Ionicon ahead of the label in the label's colour. The label wraps rather than truncates, so the pill grows with enlarged text. The filled one takes the outline's `border-[1.5px] border-cherry` and `py-[11px]` too: Yoga won't flex a pill below its padding and border, so without it an outlined pill beside a filled one comes out 3 wider. Only the detail screen's actions (§4.4) carry one. |
 | Distance | `rounded-full bg-parchment px-[9px] py-1`, label `text-[11px] font-semibold text-muted` with `fontVariant: ['tabular-nums']`. On a List card it shares the eyebrow's line, at the right — the same x in every card, and none of the name's width. |
 
 Tabular figures are the point of the distance pill: a column of them lines up down the list.
@@ -333,7 +334,8 @@ The restyle costs a screen reader nothing, and neither should the next change.
   wrote it, and a row is not the place to hear all of it. The category goes in sentence
   case: an all-caps label is spelled out letter by letter. Label a card explicitly only
   where the text inside it wouldn't do.
-- A List card's actions are links, siblings of the body, each named with its place.
+- A List card's actions are links, siblings of the body, each named with its place. The
+  detail screen's Directions and Call pills reuse those names.
 - Touch targets reach 44 through padding, not `hitSlop`, where the control hangs off an
   absolutely positioned parent — Android clips touch at a parent's bounds.
 
@@ -432,16 +434,32 @@ depend on), with 6px of padding around it for the 44 target. It renders **last**
 paints over the photographs.
 
 Body at the 22 measure: 11px eyebrow, name `text-[23px] leading-[29px] font-semibold`,
-address line, a 10px star band divider at `my-4`, then the description as written by
-whoever submitted it. Contact rows follow — label over value, icon at the right, separated
+address line, the actions at `mt-4`, a 10px star band divider at `my-4`, then the
+description as written by whoever submitted it. Contact rows follow — label over value, icon at the right, separated
 by a **top** hairline so the first row's rule doubles as the line under the description.
 
-The body ends in **Report a problem**: an outlined pill at `mt-7`, `self-start` on the body's
-left edge, `border-[1.5px] border-line` with the secondary pill's cherry label and padding.
-A `line` border rather than cherry, because the secondary pill's border would make it the
-loudest thing on a screen that is about the place. It pushes §4.10 whoever is signed in —
-that screen asks for the account, so signing in comes back to the report and not to here.
-A place that isn't there has no pill.
+**The actions** sit straight under the address: most visits to a place end in going there
+or ringing them. **Directions** is a primary pill with `navigate-outline`, to the pin's
+coordinates through `directionsUrl`; **Call** beside it is a secondary pill with
+`call-outline`, only when `telUrl` makes the phone dialable. Both are pills with an icon
+(§3), `accessibilityRole="link"`, named like the List card's actions (`actions.directionsTo`,
+`actions.callPlace`), and a link the device can't open gets `detail.linkFailed`.
+
+Two pills share the width equally (`flex-1`, 10 gap) while **both** icon-and-label pairs fit
+in half of it, and stack full-width in a column when either doesn't. Fit is **measured**, not
+read off the font scale: each pill is laid out a second time out of sight — absolute, `opacity:
+0`, hidden from accessibility — at its natural width, and that copy is compared with half the
+row. The visible pills can't be measured for this, because a stacked pill always fits. Until
+the row has a width they sit side by side. Directions alone is full width and measures
+nothing. The phone contact row stays below, unchanged: the pill is the action, the row is
+where the number is written down.
+
+The body ends in **Report a problem**: muted text, `text-[13px] text-muted underline`, at
+`mt-5`, `self-start`, `min-h-[44px] py-2.5` for the target. It was an outlined pill; next
+to the actions a third pill would compete with Directions on a screen that is about the
+place, and the underline is what still says it can be pressed. It pushes §4.10 whoever is
+signed in — that screen asks for the account, so signing in comes back to the report and
+not to here. A place that isn't there has no report action.
 
 The distance appears **only once the origin has resolved** — while the permission prompt is
 still up there is nothing to measure from but a guess about the reader. It is a nested
@@ -772,6 +790,10 @@ Deliberate, and not to be "fixed" back:
 - **The List's band and chips pin under the status bar.** The canvas is a still frame and
   has no opinion. The first divergence in this list says filtering is load-bearing on the
   List; a control that scrolls out of reach isn't bearing anything.
+- **The detail screen has Directions and Call pills under the address, and Report is text.**
+  The canvas's detail screen has neither action. They are the List card's two actions at
+  the size of a screen, where they are what most visits end in; Report stepped down from a
+  pill so that it doesn't compete with them. Owner's call, #28.
 - **A List card with no photograph shows an outline rhomb in a bordered tile,** not the
   canvas's 45° hatch. The hatch is the canvas's mark for a photograph not yet chosen or not
   yet loaded; this tile means there isn't one, and an outline says "nothing here" where a
