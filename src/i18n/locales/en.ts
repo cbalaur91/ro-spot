@@ -155,6 +155,18 @@ export default {
     signIn: 'Sign in',
     signOut: 'Sign out',
     signOutFailed: 'Could not sign you out. Try again.',
+    // Account deletion: a quiet link, then one explicit confirmation. The
+    // confirm button names the act in full, and the other names what staying
+    // keeps — "Cancel" would not say which of the two it cancels.
+    delete: {
+      action: 'Delete account',
+      title: 'Delete your account?',
+      body: 'Your account, the places you added — including any still waiting for review — and their photos are removed for good.',
+      confirm: 'Delete my account',
+      cancel: 'Keep my account',
+      deleting: 'Deleting your account',
+      failed: 'Your account was not deleted. Check your connection and try again.',
+    },
     // The section between who you are and the way out: what you have sent in,
     // and what became of it.
     places: {

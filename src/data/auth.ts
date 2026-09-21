@@ -1,4 +1,4 @@
-import type { AuthError, Session, User } from '@supabase/supabase-js';
+import { type AuthError, FunctionsHttpError, type Session, type User } from '@supabase/supabase-js';
 
 import { supabase } from './supabase';
 
@@ -141,6 +141,33 @@ export async function signOut(): Promise<void> {
   const { error } = await supabase.auth.signOut();
 
   if (error) throw problemFrom(error);
+}
+
+/**
+ * Delete the signed-in account and everything it owns — its places, its
+ * reports, its photos — then forget the session on this device.
+ *
+ * The deleting is the `delete-account` Edge Function's: removing an auth user
+ * takes the service role, which the app never holds. The function reads who is
+ * asking from the session token and takes no argument, so there is no way to
+ * name somebody else's account.
+ *
+ * The sign-out is local and its answer ignored. The account it would revoke is
+ * already gone, and supabase-js clears the stored session before it reports any
+ * failure — so once the server said yes, the account is deleted, full stop.
+ */
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase.functions.invoke('delete-account', { method: 'POST' });
+
+  // 410 is a retry after a deletion whose answer was lost on the way back: the
+  // account is gone, and all that is left to do is the sign-out below.
+  const alreadyDeleted = error instanceof FunctionsHttpError && error.context?.status === 410;
+
+  if (error && !alreadyDeleted) {
+    throw new Error(`Failed to delete account: ${error.message}`);
+  }
+
+  await supabase.auth.signOut({ scope: 'local' });
 }
 
 /**

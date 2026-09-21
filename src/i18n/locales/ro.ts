@@ -123,6 +123,15 @@ export default {
     signIn: 'Intră în cont',
     signOut: 'Ieși din cont',
     signOutFailed: 'Nu am putut să te deconectez. Încearcă din nou.',
+    delete: {
+      action: 'Șterge contul',
+      title: 'Ștergi contul?',
+      body: 'Contul tău, locurile pe care le-ai adăugat — inclusiv cele care așteaptă verificarea — și fotografiile lor sunt șterse definitiv.',
+      confirm: 'Șterge-mi contul',
+      cancel: 'Păstrează contul',
+      deleting: 'Se șterge contul',
+      failed: 'Contul nu a fost șters. Verifică conexiunea și încearcă din nou.',
+    },
     places: {
       label: 'Locurile tale',
       hint: 'Dacă modifici un loc, se întoarce la verificare.',
