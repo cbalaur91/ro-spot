@@ -57,10 +57,18 @@ export default {
     locating: 'Finding your location',
     detroit: 'Detroit',
     detroitLabel: 'Show Metro Detroit on the map',
+    // On the fallback: the way to a real "my location" — asking again, or
+    // Settings once the OS won't ask.
+    enable: 'Use my location',
+    enableLabel: 'Turn on location to measure distances from where you are',
+    settings: 'Location settings',
+    settingsLabel: 'Open settings to turn on location for RoSpot',
   },
   list: {
     subtitle: 'Romanian places across the US',
     fallbackOrigin: 'Distances are from downtown Detroit. Turn on location to measure from where you are.',
+    enable: 'Use my location',
+    settings: 'Open settings',
     loading: 'Loading places',
     empty: 'No places yet.',
     // The line names the band stitched above it, so the hora reads as an

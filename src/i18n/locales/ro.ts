@@ -43,10 +43,16 @@ export default {
     locating: 'Se caută locația ta',
     detroit: 'Detroit',
     detroitLabel: 'Arată zona Detroit pe hartă',
+    enable: 'Folosește locația mea',
+    enableLabel: 'Activează localizarea ca distanțele să fie măsurate de unde ești',
+    settings: 'Setări localizare',
+    settingsLabel: 'Deschide setările ca să activezi localizarea pentru RoSpot',
   },
   list: {
     subtitle: 'Locuri românești din Statele Unite',
     fallbackOrigin: 'Distanțele sunt măsurate din centrul orașului Detroit. Activează localizarea ca să le măsori de unde ești.',
+    enable: 'Folosește locația mea',
+    settings: 'Deschide setările',
     loading: 'Se încarcă locurile',
     empty: 'Niciun loc deocamdată.',
     // Invitația, nu traducerea ei: hora cusută deasupra chiar are nevoie de

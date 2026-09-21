@@ -10,6 +10,7 @@ import { PlacesMap } from '@/components/PlacesMap';
 import type { PlacesMapHandle } from '@/components/PlacesMap.types';
 import { closestFraming } from '@/framing';
 import { DEFAULT_REGION, milesLabel, nearbyRegion } from '@/geo';
+import type { Origin } from '@/hooks/useOrigin';
 import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
 import { StarBand } from '@/motifs/Band';
 import { Diamond } from '@/motifs/Diamond';
@@ -108,6 +109,12 @@ function MapCard({
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+/** The way off the fallback, by what the OS will still do: show its prompt, or only Settings. */
+const ENABLE_CONTROL = {
+  ask: { icon: 'navigate-outline', text: 'map.enable', label: 'map.enableLabel' },
+  settings: { icon: 'settings-outline', text: 'map.settings', label: 'map.settingsLabel' },
+} as const satisfies Record<Origin['access'], { icon: IconName; text: string; label: string }>;
+
 /**
  * One of the map's own controls: a surface pill that stands on the tiles the way
  * the card does. The icon is muted and the word is ink — the controls are the
@@ -155,18 +162,25 @@ function MapControl({
  * The location control says what it will actually show. Without a fix it is
  * "Detroit", the map's fallback, because a button reading "My location" that
  * flew to downtown Detroit would be telling somebody in Ohio where they are.
+ * On the fallback, the way to a real "my location" stands above it: asking
+ * again, or Settings once the OS has stopped asking.
  */
 function MapControls({
   locate,
+  access,
   onLocate,
+  onEnable,
   onClosest,
 }: {
   locate: 'pending' | 'device' | 'fallback';
+  access: Origin['access'];
   onLocate: () => void;
+  onEnable: () => void;
   /** Absent when there is nothing to frame. */
   onClosest?: () => void;
 }) {
   const { t } = useTranslation();
+  const enable = ENABLE_CONTROL[access];
 
   return (
     <View pointerEvents="box-none" className="mb-2.5 items-end gap-2">
@@ -176,6 +190,14 @@ function MapControls({
           text={t('map.closest')}
           label={t('map.closestLabel')}
           onPress={onClosest}
+        />
+      ) : null}
+      {locate === 'fallback' ? (
+        <MapControl
+          icon={enable.icon}
+          text={t(enable.text)}
+          label={t(enable.label)}
+          onPress={onEnable}
         />
       ) : null}
       {locate === 'fallback' ? (
@@ -253,8 +275,17 @@ function SelectedPlace({ place }: { place: PlaceWithDistance }) {
 export default function MapScreen() {
   const { t } = useTranslation();
   const { selected } = useCategoryFilter();
-  const { places, origin, isResolved, isUserLocation, isPending, isError, refetch } =
-    useVisiblePlaces();
+  const {
+    places,
+    origin,
+    isResolved,
+    isUserLocation,
+    access,
+    enableLocation,
+    isPending,
+    isError,
+    refetch,
+  } = useVisiblePlaces();
   // The pin the user picked, if they have. Until then the card follows the
   // nearest place, so a location fix that re-sorts the list moves it too; after
   // a pick, a re-sort leaves it alone.
@@ -279,8 +310,12 @@ export default function MapScreen() {
   // the map first, after which a late location fix doesn't get to take the map
   // off them.
   const openingOwed = useRef(true);
+  // Location the user turned on from here, so the map shows them where they are
+  // when the fix comes — unless they've moved the map on to something else by then.
+  const fixOwed = useRef(false);
   const takeOver = () => {
     openingOwed.current = false;
+    fixOwed.current = false;
   };
 
   // The nearest five, the user beside them when they're close. The selection
@@ -308,6 +343,17 @@ export default function MapScreen() {
   useEffect(() => {
     if (isMapReady && isDataReady && isResolved) frameOpening();
   }, [isMapReady, isDataReady, isResolved]);
+
+  // Settled only by an answer: a denial drops the debt, a fix pays it. From
+  // Settings there is no pending phase, and the debt waits for the return.
+  const showFix = useEffectEvent(() => {
+    if (!fixOwed.current) return;
+    fixOwed.current = false;
+    if (isUserLocation) map.current?.show(nearbyRegion(origin));
+  });
+  useEffect(() => {
+    if (isResolved) showFix();
+  }, [isResolved, isUserLocation]);
 
   // A chip is a new question, so it gets the same answer the opening did. Before
   // the opening has run, the opening frames the filtered set itself.
@@ -350,9 +396,15 @@ export default function MapScreen() {
         >
           <MapControls
             locate={!isResolved ? 'pending' : isUserLocation ? 'device' : 'fallback'}
+            access={access}
             onLocate={() => {
               takeOver();
               map.current?.show(isUserLocation ? nearbyRegion(origin) : DEFAULT_REGION);
+            }}
+            onEnable={() => {
+              takeOver();
+              fixOwed.current = true;
+              enableLocation();
             }}
             onClosest={
               places.length > 0

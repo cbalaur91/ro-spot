@@ -1,7 +1,7 @@
 /**
  * Everything RoSpot needs to answer "how far is that, and what's nearest" —
  * deliberately free of `expo-location` so it stays unit-testable. The hook that
- * asks the device where it is lives in `src/hooks/useOrigin.ts`.
+ * asks the device where it is lives in `src/hooks/useOrigin.tsx`.
  */
 
 export type Coords = { lat: number; lng: number };

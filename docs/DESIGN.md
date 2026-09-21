@@ -487,15 +487,25 @@ leaves it there, which would lift the Google logo and shift every later move. A 
 keeps a pin's box clear of the map's edges (52 at the top, 36 at the sides).
 
 **Controls.** A right-aligned column of map controls (§3) stands `mb-2.5` above the card,
-`gap-2` apart — Closest places, then location — so the Google logo at the card's left
-shoulder stays in sight.
+`gap-2` apart — Closest places, then (on the fallback) turning location on, then location —
+so the Google logo at the card's left shoulder stays in sight.
 
 - **Closest places** (`scan-outline`) runs the framing rule. Hidden when there are no results.
 - **Location**, by what location has said: still asking → "My location", disabled and busy,
   a spinner for its icon; a device fix → "My location" (`locate-outline`), which recentres
   on `nearbyRegion` of the device; denied or failed → "Detroit" (`business-outline`), which
-  recentres on `DEFAULT_REGION`. It never asks for permission again, and never calls the
+  recentres on `DEFAULT_REGION`. It never asks for permission itself, and never calls the
   fallback "my location".
+- **Turning location on**, only on the fallback, above Detroit: "Use my location"
+  (`navigate-outline`) asks again — or retries a failed fix, offering on Android to switch the
+  device's location on — and "Location settings" (`settings-outline`) opens the system
+  Settings once the OS won't show the prompt (Android after repeated denials, iOS after the
+  first). It counts as the user's press. The fix it asked for recentres on `nearbyRegion` of
+  the device when it comes — from the prompt, or from Settings on the way back into the app —
+  unless the user moved the map or picked a pin first; a fix nobody asked for here moves
+  nothing. A denial settles the press; a return from Settings without a grant doesn't, so the
+  press stays outstanding until a fix or a touch on the map. A fix gives up after 15 s
+  (`FIX_TIMEOUT_MS`) and leaves the fallback in place. #34.
 - Neither control touches the selection, and nor does panning.
 
 The screen measures two heights. The **card** and its gap become `footInset`, which the map
@@ -511,9 +521,11 @@ rhomb, and points at the List tab. Web is a dev convenience, not a release targe
 #### 4.2 List — `src/app/(tabs)/list.tsx`
 
 30px wordmark and `list.subtitle` at the 24 gutter, the fallback-origin note under them when
-— and only when — the origin has resolved to the fallback. Then the 14px star band edge to
-edge, then the chip row. Rows are cards at `mx-[18px] mb-3`; the card's body navigates and
-its foot leaves the app (§3, Card). Pull-to-refresh is the list's refetch.
+— and only when — the origin has resolved to the fallback, and under the note, bare as Clear
+is, its way out: "Use my location" (`list.enable`), or "Open settings" (`list.settings`) once
+the OS won't ask again. The same `enableLocation` as the Map's control (#34). Then the 14px
+star band edge to edge, then the chip row. Rows are cards at `mx-[18px] mb-3`; the card's
+body navigates and its foot leaves the app (§3, Card). Pull-to-refresh is the list's refetch.
 
 **The band and the chips pin; the masthead scrolls away.** A filter you have to scroll back
 up to reach is one you stop using halfway down the list. The pinned block is `bg-surface`,
