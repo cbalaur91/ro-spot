@@ -48,7 +48,7 @@ const CARD_SHADOW = { boxShadow: `0px 4px 14px ${colors.ink}1F` };
 
 /**
  * The foot of the map, where everything the map can't say itself is said: the
- * nearest place, a filter that has emptied it, or places that never arrived.
+ * selected place, a filter that has emptied it, or places that never arrived.
  * One card recipe for all three — a strip of the star band over a padded body —
  * so a system state doesn't look bolted onto a screen the card language already
  * covers.
@@ -61,10 +61,12 @@ function MapCard({
   children,
   onPress,
   label,
+  hint,
 }: {
   children: React.ReactNode;
   onPress?: () => void;
   label?: string;
+  hint?: string;
 }) {
   const body = (
     <>
@@ -84,8 +86,8 @@ function MapCard({
   return (
     <Pressable
       accessibilityRole="button"
-      // The place's name, not "open place": the card is the place.
       accessibilityLabel={label}
+      accessibilityHint={hint}
       onPress={onPress}
       className={`${CARD} active:opacity-90`}
       style={CARD_SHADOW}
@@ -96,13 +98,12 @@ function MapCard({
 }
 
 /**
- * The closest place, brought to the foot of the map so the answer to "what's
- * near me" doesn't depend on finding the right pin. The list is already ordered
- * by distance, so the nearest place is the first one the map is showing —
- * chips included, since a filtered map's nearest place is the nearest place the
- * user asked to see.
+ * The selected place — the pin the user tapped, or until they tap one, the
+ * nearest — brought to the foot of the map, so the answer to "what's near me"
+ * doesn't depend on finding the right pin and a pin tap has somewhere to say
+ * which place it is.
  */
-function NearestPlace({ place }: { place: PlaceWithDistance }) {
+function SelectedPlace({ place }: { place: PlaceWithDistance }) {
   const { t } = useTranslation();
   const router = useRouter();
   const tint = categoryColor[place.category];
@@ -110,7 +111,14 @@ function NearestPlace({ place }: { place: PlaceWithDistance }) {
 
   return (
     <MapCard
-      label={place.name}
+      // Name, kind and street: a card picked from a pin the reader can't see
+      // has to say which of the places it is.
+      label={t('map.card', {
+        name: place.name,
+        category: t(`categories.${place.category}`),
+        address: place.address,
+      })}
+      hint={t('map.cardHint')}
       onPress={() => router.push({ pathname: '/place/[id]', params: { id: place.id } })}
     >
       <View className="flex-row justify-between gap-2.5">
@@ -146,7 +154,17 @@ export default function MapScreen() {
   const { selected } = useCategoryFilter();
   const { places, origin, isUserLocation, isPending, isError, refetch } =
     useVisiblePlaces();
-  const nearest = places[0];
+  // The pin the user picked, if they have. Until then the card follows the
+  // nearest place, so a location fix that re-sorts the list moves it too; after
+  // a pick, a re-sort leaves it alone.
+  const [pickedId, setPickedId] = useState<string>();
+  const picked = places.find((place) => place.id === pickedId);
+  // A pick that a refresh or a chip took off the map is forgotten rather than
+  // parked, so the card falls back to the nearest remaining place — and keeps
+  // following it — instead of jumping back when the chip is lifted. Set during
+  // render, React's way to adjust state to a prop, so no frame shows the gap.
+  if (pickedId !== undefined && !picked) setPickedId(undefined);
+  const shown = picked ?? places[0];
   // How much of the map's foot the card covers, so the map can keep its own
   // furniture — the Google logo, which the terms say must stay visible — clear
   // of it.
@@ -162,11 +180,13 @@ export default function MapScreen() {
           origin={origin}
           isUserLocation={isUserLocation}
           footInset={footInset}
+          selectedId={shown?.id}
+          onSelect={setPickedId}
         />
 
         {/* One foot to the map, and three things that might stand in it: the
             places that never arrived, the map's own emptiness, or — when there
-            is anything to show at all — the nearest place. */}
+            is anything to show at all — the selected place. */}
         <View
           pointerEvents="box-none"
           className="absolute left-[14px] right-[14px]"
@@ -191,8 +211,8 @@ export default function MapScreen() {
                 </Pressable>
               </View>
             </MapCard>
-          ) : nearest ? (
-            <NearestPlace place={nearest} />
+          ) : shown ? (
+            <SelectedPlace place={shown} />
           ) : isPending ? null : (
             <MapCard>
               {/* An empty map means two different things, and blaming the chips for

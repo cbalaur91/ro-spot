@@ -1,6 +1,5 @@
-import { useRouter } from 'expo-router';
 import { useEffect, useRef } from 'react';
-import { StyleSheet } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import MapView, { Marker, PROVIDER_DEFAULT } from 'react-native-maps';
 
 import { DEFAULT_REGION, nearbyRegion } from '@/geo';
@@ -9,31 +8,62 @@ import { categoryColor, colors } from '@/theme';
 
 import type { PlacesMapProps } from './PlacesMap.types';
 
+// The pin's two sizes: 17 for a 13px core — the canvas draws the ring outside
+// the rhomb it states, and a border-box 13 would leave a pin smaller than the
+// one it replaces — and the Add map's 25 / 3 for the selected one.
+const PIN = { size: 17, ring: 2 };
+const SELECTED_PIN = { size: 25, ring: 3 };
+// One box for both sizes, wide enough for the selected rhomb's diagonal and its
+// shadow. Android draws a custom marker into a bitmap the size of its view and
+// clips whatever falls outside, and a rotated square overhangs its own layout
+// box. One box also keeps the tip on the same pixel of the image at either
+// size, so the anchor never has to change with the selection.
+const BOX = { width: 44, height: 40 };
+
 /**
  * A pin is the rhomb of the language, stood over the coordinate: the category's
  * tint, a pale ring so it stays legible over dark tiles, and enough shadow to
- * lift it off them. No stem — with the marker anchored at its foot, the rhomb's
- * own lower vertex is what marks the spot.
+ * lift it off them. No stem — the rhomb's lower vertex sits on the box's foot,
+ * and the marker is anchored there, so the vertex is what marks the spot at
+ * either size.
  */
-function Pin({ tint }: { tint: string }) {
+function Pin({ tint, selected }: { tint: string; selected: boolean }) {
+  const { size, ring } = selected ? SELECTED_PIN : PIN;
+  // Half the diagonal: how far the rotated rhomb's vertex sits from its centre.
+  const reach = (size * Math.SQRT2) / 2;
+
   return (
-    <Diamond
-      // 17 for a 13px core: the canvas draws the ring outside the rhomb it
-      // states, and a border-box 13 would leave a pin smaller than the one it
-      // replaces. Black rather than ink — a pin has to lift off map tiles,
-      // and their colours aren't ours to match.
-      size={17}
-      tint={tint}
-      border={colors.surface}
-      borderWidth={2}
-      shadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
-    />
+    <View testID="pin" style={BOX} pointerEvents="none">
+      <View
+        style={{
+          position: 'absolute',
+          left: (BOX.width - size) / 2,
+          top: BOX.height - reach - size / 2,
+        }}
+      >
+        <Diamond
+          size={size}
+          tint={tint}
+          border={colors.surface}
+          borderWidth={ring}
+          // Black rather than ink — a pin has to lift off map tiles, and their
+          // colours aren't ours to match.
+          shadow="0px 1px 3px rgba(0, 0, 0, 0.3)"
+        />
+      </View>
+    </View>
   );
 }
 
-export function PlacesMap({ places, origin, isUserLocation, footInset }: PlacesMapProps) {
+export function PlacesMap({
+  places,
+  origin,
+  isUserLocation,
+  footInset,
+  selectedId,
+  onSelect,
+}: PlacesMapProps) {
   const map = useRef<MapView>(null);
-  const router = useRouter();
 
   useEffect(() => {
     if (!isUserLocation) return;
@@ -56,29 +86,41 @@ export function PlacesMap({ places, origin, isUserLocation, footInset }: PlacesM
       // Keeps the Google logo — which has to stay visible — above whatever the
       // screen stands in the map's foot, and centres the map on what is left.
       mapPadding={{ top: 0, right: 0, bottom: footInset, left: 0 }}
+      // A pin tap picks a place for the card; the map stays where the user
+      // left it. Android recentres on the marker otherwise.
+      moveOnMarkerPress={false}
     >
-      {places.map((place) => (
-        <Marker
-          key={place.id}
-          coordinate={{ latitude: place.lat, longitude: place.lng }}
-          // The foot of the rhomb is the coordinate, not its centre.
-          anchor={{ x: 0.5, y: 1 }}
-          title={place.name}
-          description={place.address}
-          // The callout, not the pin: tapping a pin should show you which place
-          // it is before it takes you somewhere, and the callout is the tap that
-          // says you meant it.
-          onCalloutPress={() =>
-            router.push({ pathname: '/place/[id]', params: { id: place.id } })
-          }
-          // Left tracking view changes on: switching it off is the usual fix for
-          // hundreds of markers, but on Android it can also leave a custom pin
-          // blank on first paint, and the launch dataset is 10-20 places.
-          tracksViewChanges
-        >
-          <Pin tint={categoryColor[place.category]} />
-        </Marker>
-      ))}
+      {places.map((place) => {
+        const selected = place.id === selectedId;
+
+        return (
+          <Marker
+            // The selection is in the key, so a pin that changes size is a new
+            // marker. On Android the marker draws its view into a bitmap and
+            // stops watching the view once the first renders settle, restarting
+            // only when the view's own size changes — which the fixed box never
+            // does — so a pin redrawn in place keeps its old image.
+            key={`${place.id}:${selected ? 'selected' : 'plain'}`}
+            identifier={place.id}
+            coordinate={{ latitude: place.lat, longitude: place.lng }}
+            // The foot of the box is the rhomb's lower vertex, not its centre.
+            anchor={{ x: 0.5, y: 1 }}
+            // No title, description or callout: the card at the map's foot is
+            // what a pin opens, and a native bubble would say the same thing
+            // twice in two designs.
+            onPress={() => onSelect(place.id)}
+            // Above its neighbours, so a pick in a cluster isn't drawn under
+            // the pins it was picked from.
+            zIndex={selected ? 1 : 0}
+            // Left tracking view changes on: switching it off is the usual fix
+            // for hundreds of markers, but on Android it can also leave a custom
+            // pin blank on first paint, and the launch dataset is 10-20 places.
+            tracksViewChanges
+          >
+            <Pin tint={categoryColor[place.category]} selected={selected} />
+          </Marker>
+        );
+      })}
     </MapView>
   );
 }

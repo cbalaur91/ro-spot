@@ -33,6 +33,8 @@ export default {
     error: 'Locurile nu au putut fi încărcate.',
     webUnsupported: 'Harta are nevoie de aplicația de iOS sau Android.',
     webUnsupportedHint: 'Aceleași locuri sunt în fila Listă.',
+    card: '{{name}}, {{category}}, {{address}}',
+    cardHint: 'Deschide detaliile locului',
   },
   list: {
     subtitle: 'Locuri românești din Statele Unite',
