@@ -31,3 +31,4 @@
 - New i18n keys don't arrive by fast refresh — the resources are registered once at init, so the screen shows the raw key until the app is force-stopped and relaunched.
 - A test that an inner control "doesn't trigger the outer one" can't tell nested from sibling — the inner `Pressable` wins the responder either way. Assert the structure: `within(outer).queryByRole(...)` is null.
 
+- Ship every ticket as a branch + PR (`<issue>-<slug>`, body `Closes #N`), never a commit on `main`: /implement's "commit to the current branch" means the feature branch, so branch before the first commit.

@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FormHeader, PlaceEditor } from '@/components/PlaceEditor';
+import { FormHeader } from '@/components/Form';
+import { PlaceEditor } from '@/components/PlaceEditor';
 import { Loading } from '@/components/ScreenState';
 import { submitPlace } from '@/data/submissions';
 import { HoraBand } from '@/motifs/Band';

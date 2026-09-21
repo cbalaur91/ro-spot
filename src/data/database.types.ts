@@ -104,6 +104,38 @@ export type Database = {
         }
         Relationships: []
       }
+      reports: {
+        Row: {
+          created_at: string
+          id: string
+          note: string | null
+          place_id: string
+          reporter_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          place_id: string
+          reporter_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          note?: string | null
+          place_id?: string
+          reporter_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reports_place_id_fkey"
+            columns: ["place_id"]
+            isOneToOne: false
+            referencedRelation: "places"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       place_duplicate_review: {

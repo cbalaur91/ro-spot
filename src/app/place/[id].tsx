@@ -222,8 +222,34 @@ function PlaceBody({ place }: { place: Place }) {
             ))}
           </View>
         ) : null}
+
+        <ReportPill placeId={place.id} />
       </View>
     </ScrollView>
+  );
+}
+
+/**
+ * The way to tell the moderator a listing is wrong, at the foot of the body:
+ * after everything the place says about itself, never in the way of it.
+ *
+ * Outlined in `line` rather than `cherry` — the secondary pill's border would
+ * make it the loudest thing on a screen that is about the place. It opens the
+ * report screen whether or not anyone is signed in: that screen asks for an
+ * account, so signing in lands back on the report rather than here.
+ */
+function ReportPill({ placeId }: { placeId: string }) {
+  const { t } = useTranslation();
+  const router = useRouter();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={() => router.push({ pathname: '/report/[id]', params: { id: placeId } })}
+      className="mt-7 self-start rounded-full border-[1.5px] border-line px-6 py-[11px] active:opacity-70"
+    >
+      <Text className="text-[14px] font-semibold text-cherry">{t('detail.report')}</Text>
+    </Pressable>
   );
 }
 
