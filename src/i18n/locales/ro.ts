@@ -56,6 +56,7 @@ export default {
     error: 'Locul nu a putut fi încărcat.',
     notFound: 'Locul acesta nu este aici.',
     notFoundHint: 'Poate a fost șters sau poate încă așteaptă aprobarea.',
+    report: 'Raportează o problemă',
   },
   auth: {
     signIn: {
@@ -181,5 +182,22 @@ export default {
     notFound: 'Acest loc nu este al tău ca să îl modifici.',
     save: 'Salvează și trimite spre verificare',
     saveFailed: 'Locul nu a fost salvat. Verifică conexiunea și încearcă din nou.',
+  },
+  report: {
+    title: 'Raportează o problemă',
+    subtitle: 'O vede doar moderatorul',
+    back: 'Înapoi la loc',
+    loading: 'Se încarcă contul tău',
+    anonymousTitle: 'Ca să raportezi o problemă ai nevoie de un cont.',
+    anonymousHint: 'Intră în cont și spune-i moderatorului ce nu e în regulă. Ca să te uiți, nu ai nevoie de unul.',
+    signIn: 'Intră în cont',
+    note: 'Ce nu e în regulă',
+    notePlaceholder: 'S-a închis, adresă greșită, nu e românesc…',
+    send: 'Trimite raportul',
+    sendFailed: 'Raportul nu a fost trimis. Verifică conexiunea și încearcă din nou.',
+    done: {
+      title: 'Mulțumim — moderatorul se va uita.',
+      hint: 'Nimic nu se schimbă pe hartă până nu o face.',
+    },
   },
 } as const;

@@ -67,6 +67,7 @@ export default {
     notFound: 'That place is not here.',
     // Both halves of the truth: it may be gone, or it may not be public yet.
     notFoundHint: 'It may have been removed, or it may still be waiting for review.',
+    report: 'Report a problem',
   },
   auth: {
     // One screen in two modes, so the two sets of words sit side by side rather
@@ -214,5 +215,23 @@ export default {
     notFound: 'This place isn’t yours to edit.',
     save: 'Save and send for review',
     saveFailed: 'The place was not saved. Check your connection and try again.',
+  },
+  report: {
+    title: 'Report a problem',
+    // Who reads it is said up front, as the Add tab says who reviews a place.
+    subtitle: 'Only the moderator sees it',
+    back: 'Back to the place',
+    loading: 'Loading your account',
+    anonymousTitle: 'Reporting a problem needs an account.',
+    anonymousHint: 'Sign in and tell the moderator what’s wrong. Browsing never needs one.',
+    signIn: 'Sign in',
+    note: 'What’s wrong',
+    notePlaceholder: 'Closed for good, wrong address, not Romanian…',
+    send: 'Send report',
+    sendFailed: 'The report wasn’t sent. Check your connection and try again.',
+    done: {
+      title: 'Thanks — the moderator will take a look.',
+      hint: 'Nothing on the map changes until they have.',
+    },
   },
 } as const;

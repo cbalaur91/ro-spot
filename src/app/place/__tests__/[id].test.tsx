@@ -257,4 +257,26 @@ describe('Place detail', () => {
 
     expect(mockBack).toHaveBeenCalled();
   });
+
+  it('offers to report a problem with the place, signed in or not', async () => {
+    fetchPlace.mockResolvedValue(cathedral);
+
+    await renderScreen(<PlaceDetailScreen />);
+
+    await screen.findByText(cathedral.name);
+    // No session is read here: the report screen asks for one, so that someone
+    // who signs in lands back on the report rather than on this page.
+    await userEvent.press(screen.getByRole('button', { name: 'Report a problem' }));
+
+    expect(mockPush).toHaveBeenCalledWith({ pathname: '/report/[id]', params: { id: 'a' } });
+  });
+
+  it('offers nothing to report on a place that is not here', async () => {
+    fetchPlace.mockResolvedValue(null);
+
+    await renderScreen(<PlaceDetailScreen />);
+
+    await screen.findByText('That place is not here.');
+    expect(screen.queryByRole('button', { name: 'Report a problem' })).toBeNull();
+  });
 });

@@ -1175,3 +1175,40 @@ Follow-ups worth an issue:
 - Thumbnails load the full-size JPEG. Fine at seed scale; an upload-time thumbnail is the fix.
 - The gallery's hand-drawn rhombs can move to `Diamond`'s outline form when that file is touched.
 - The owner's approved "Test" place (Grosse Ile) is live in the project.
+
+## Issue #9 — Report a problem on a listing
+
+Seams agreed in the ticket: the `reports` table's policies (integration suite against
+`rospot`), `reportPlace` in `src/data/`, and the report screen (component tests).
+
+- [x] A. Migration: `reports` (place, reporter, optional note ≤1000, created_at); RLS on,
+      insert-only for `authenticated` as themselves, only against a place they can see; no
+      select policy → verify: `supabase db push --linked` applies; types regenerated
+- [x] B. `reportPlace(placeId, note)` + `reports.integration.test.ts` → verify: signed-in
+      insert lands with place/reporter/note; anon refused; reporting as someone else refused;
+      no client can read reports (not even their own); pending place refused
+- [x] C. `/report/[id]` screen, TDD: anonymous → sign-in invitation; signed in → optional
+      note + "Send report"; failure keeps the note; done state → verify: component tests RO+EN
+- [x] D. Detail screen: outlined "Report a problem" pill at the foot of the body → verify:
+      detail test asserts it pushes `/report/[id]`
+- [x] E. DESIGN.md (§4.4, new §4.10, §5 divergence retired) → verify: read through
+- [x] F. Gates: typecheck, lint, `npm test`, android export; emulator screenshots of the
+      pill, the invitation, the form and the done state; a real report row written then deleted
+- [x] G. `/code-review`, fix, commit
+
+Done 2026-09-20. `npm test` 383 green (incl. 9 report-suite assertions against `rospot`),
+typecheck + lint clean, Android bundle carries the screen. Emulator pass: pill at the foot of
+the detail body, form, sent state, signed-out invitation, and sign-in returning to the form;
+one real row written (place, reporter, note) and deleted. Screens in `~/.cache/rospot-shots/report-*.png`.
+
+Decisions: a `/report/[id]` route (not a sheet) so an anonymous reporter has something to
+come back to after sign-in; reporters can't read even their own reports (stricter than the
+ticket); a report only lands on a place the reporter can see; `FormHeader`/`Field`/`Input`/
+`PrimaryPill` moved to `src/components/Form.tsx` so the report screen doesn't import a map.
+
+Review fixes: blank-note normalising lives in `reportPlace` only; two misleading test
+names/docs. Kept: third copy of the invitation column (Add/Profile already duplicate it —
+worth one shared component later); no rate limit or per-person uniqueness on reports (v1).
+
+Found in passing: the emulator test account's password in auto-memory didn't match
+Supabase; reset it to the documented one via the admin API.

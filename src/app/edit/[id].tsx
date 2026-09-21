@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { FormHeader, PlaceEditor } from '@/components/PlaceEditor';
+import { FormHeader } from '@/components/Form';
+import { PlaceEditor } from '@/components/PlaceEditor';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
 import { placePhotoUrl } from '@/data/places';
 import { updatePlace } from '@/data/submissions';

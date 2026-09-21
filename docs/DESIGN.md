@@ -97,7 +97,7 @@ The thread alphabet is one map for every grid — a letter means the same colour
 |---|---|---|
 | `STAR` | 11 × 9, one tile | Header signature and divider, as a band. Never as a single tile. |
 | `HORA` | 24 × 13 (a man and a woman, hand in hand) | The two ends of one sentence, as a band: the List's true-empty invitation ("the hora needs dancers") and the Add tab's done state ("the hora has one more dancer"). Nowhere else — the hora is about who has joined, and a third use would make it wallpaper. |
-| `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.10). A whole-screen welcome motif, not an accent. |
+| `BIRD` | 16 × 12 | Sign-in and Onboarding only (§4.7, §4.11). A whole-screen welcome motif, not an accent. |
 
 `mirror(grid)` gives the same motif facing the other way, for the pairs the canvas uses
 (the Onboarding bird pair). `repeat(grid, times)` widens a tile; `tiling(band, tile, align)`
@@ -436,6 +436,13 @@ address line, a 10px star band divider at `my-4`, then the description as writte
 whoever submitted it. Contact rows follow — label over value, icon at the right, separated
 by a **top** hairline so the first row's rule doubles as the line under the description.
 
+The body ends in **Report a problem**: an outlined pill at `mt-7`, `self-start` on the body's
+left edge, `border-[1.5px] border-line` with the secondary pill's cherry label and padding.
+A `line` border rather than cherry, because the secondary pill's border would make it the
+loudest thing on a screen that is about the place. It pushes §4.10 whoever is signed in —
+that screen asks for the account, so signing in comes back to the report and not to here.
+A place that isn't there has no pill.
+
 The distance appears **only once the origin has resolved** — while the permission prompt is
 still up there is nothing to measure from but a guess about the reader. It is a nested
 `Text` inside the address line rather than a longer string: one node the address, one the
@@ -469,7 +476,8 @@ edge under it.
 
 **Reading the session / anonymous** — as Profile (§4.8): `Loading` first, so the gate never
 flashes at someone already signed in, then the invitation at the 40 measure with a primary
-pill to `/sign-in`. This is the one place the app asks for an account.
+pill to `/sign-in`. This and a report (§4.10) are the only places the app asks for an
+account.
 
 **Form** — a `ScrollView` at the 24 gutter, `gap: 14`, `paddingVertical: 18`,
 `keyboardShouldPersistTaps="handled"`. Fields in order: **NAME, CATEGORY, ADDRESS,
@@ -656,12 +664,33 @@ happens after the save.
 - Loading, failed and not-found are screen states (§3), the last of them plain rather than an
   error: a stale card, a deleted place and somebody else's id are all "not yours to edit".
 
+#### 4.10 Report a problem — `src/app/report/[id].tsx`
+
+Pushed from the detail screen's pill (§4.4). A route rather than a sheet over the detail
+screen: an anonymous reporter is sent to sign in and has to come back to something.
+
+- The page header of §4.5 (`FormHeader`, from `src/components/Form.tsx` — the form parts the
+  Add, edit and report screens share), title `report.title`, subtitle `report.subtitle`:
+  "Only the moderator sees it", said up front as the Add tab says who reviews a place. A
+  back chevron labelled `report.back`.
+- **Reading the session / anonymous** — as §4.5: `Loading`, then the invitation column at
+  the 40 measure with a primary pill to `/sign-in`, pushed so that signing in returns here.
+- **Form** — one field, the §4.5 text input made `multiline`, `minHeight: 96`, under the
+  form-label mark `report.note` with the `· optional` suffix; `maxLength` 1000, the table's
+  ceiling. Then the primary pill `report.send`, `disabled` with an `ActivityIndicator` while
+  sending. A report is **one tap**: the note never stands between anyone and the pill.
+  A failed send puts `report.sendFailed` in cherry above the pill and keeps the note.
+- **Sent** — the §4.5 done column without the band (a report is not a dancer joining):
+  `report.done.title`, the muted hint that nothing on the map changes until the moderator
+  has looked, and an outlined pill `report.back`. The header loses its chevron here — one
+  way back is enough.
+
 ### Specified, not built
 
 This one is mocked in the canvas and has no code. Build it from here; the numbers are
 the canvas's, ported content-box → border-box as §2 warns.
 
-#### 4.10 Onboarding
+#### 4.11 Onboarding
 
 A centred column at a 34 measure. The **bird pair** at the top — `mirror(BIRD)` then `BIRD`,
 126 × 96 each, `gap: 6` — then a 200px-wide 12px star band at `mt-5`. Title
@@ -684,9 +713,6 @@ Deliberate, and not to be "fixed" back:
   keep in sync.
 - **No photo thumbnail row on the detail screen.** The canvas has a 52px strip under the
   hero. The gallery pages, and page marks already say how many photos there are.
-- **No "Report a problem" button.** In the canvas and in the v1 spec, but there is no
-  reporting backend yet. It goes in when the feature does — outlined pill, `1.5px line`
-  border, cherry label, at the foot of the detail body.
 - **The detail screen keeps its contact rows.** The canvas doesn't draw them; phone, website
   and social are v1 spec fields and the screen would be lying without them.
 - **The map's bottom card is `surface`, not white.** Every other card is white. This one
