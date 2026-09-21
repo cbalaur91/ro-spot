@@ -188,6 +188,14 @@ export default {
     },
     optional: 'optional',
     optionalLabel: '{{field}} (optional)',
+    // The toggle the three optional fields fold under. Drawn as a form label
+    // with the count as its suffix; read as "Contact details, 2 added".
+    contact: {
+      add: 'Add contact details',
+      title: 'Contact details',
+      added_one: '{{count}} added',
+      added_other: '{{count}} added',
+    },
     photosRule: '1–5 required',
     placeholders: {
       name: 'What people call it',
@@ -196,6 +204,11 @@ export default {
       phone: '(313) 555-0100',
       website: 'example.com',
       socialUrl: 'facebook.com/…',
+    },
+    // Under each step's header: where the person is, and how far is left.
+    steps: {
+      details: 'Step 1 of 2 — Place details',
+      pin: 'Step 2 of 2 — Confirm location',
     },
     addressHint: 'You’ll confirm the pin on a map next',
     addPhotos: 'Add photos',

@@ -120,6 +120,25 @@ describe('Editing your place', () => {
     expect(screen.getByRole('button', { name: 'Remove photo 1' })).toBeOnTheScreen();
   });
 
+  it('keeps contact details folded away when the place has none', async () => {
+    await renderScreen();
+
+    const toggle = await screen.findByRole('button', { name: 'Add contact details, optional' });
+    expect(toggle).toBeCollapsed();
+    expect(screen.queryByLabelText('Phone (optional)')).toBeNull();
+  });
+
+  it('opens contact details on the ones the place already has', async () => {
+    fetchMyPlaces.mockResolvedValue([{ ...casa, phone: '(313) 555-0100', website: 'casa.ro' }]);
+    await renderScreen();
+
+    const toggle = await screen.findByRole('button', { name: 'Contact details, 2 added' });
+    expect(toggle).toBeExpanded();
+    expect(screen.getByLabelText('Phone (optional)').props.value).toBe('(313) 555-0100');
+    expect(screen.getByLabelText('Website (optional)').props.value).toBe('casa.ro');
+    expect(screen.getByLabelText('Social page (optional)').props.value).toBe('');
+  });
+
   it('keeps the pin where the author left it when the address is untouched', async () => {
     await renderScreen();
     await toThePin();

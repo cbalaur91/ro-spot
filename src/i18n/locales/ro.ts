@@ -150,6 +150,13 @@ export default {
     },
     optional: 'opțional',
     optionalLabel: '{{field}} (opțional)',
+    contact: {
+      add: 'Adaugă date de contact',
+      title: 'Date de contact',
+      added_one: '{{count}} câmp completat',
+      added_few: '{{count}} câmpuri completate',
+      added_other: '{{count}} de câmpuri completate',
+    },
     photosRule: 'între 1 și 5',
     placeholders: {
       name: 'Cum îi spune lumea',
@@ -158,6 +165,10 @@ export default {
       phone: '(313) 555-0100',
       website: 'exemplu.com',
       socialUrl: 'facebook.com/…',
+    },
+    steps: {
+      details: 'Pasul 1 din 2 — Detaliile locului',
+      pin: 'Pasul 2 din 2 — Confirmă locul',
     },
     addressHint: 'Confirmi apoi locul pe hartă',
     addPhotos: 'Adaugă fotografii',

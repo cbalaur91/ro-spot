@@ -12,14 +12,19 @@ import { colors } from '@/theme';
  * so that a screen with one text field doesn't import a map to get it.
  */
 
-/** The page header every step keeps, and the band under it. */
+/**
+ * The page header every step keeps, and the band under it. `step` says where a
+ * multi-step form is, beneath the subtitle, as the muted eyebrow (§3).
+ */
 export function FormHeader({
   title,
   subtitle,
+  step,
   back,
 }: {
   title: string;
   subtitle: string;
+  step?: string;
   back?: { label: string; onPress: () => void };
 }) {
   return (
@@ -42,6 +47,15 @@ export function FormHeader({
           <Text className="text-[12.5px] text-muted" numberOfLines={2}>
             {subtitle}
           </Text>
+          {step ? (
+            <Text
+              // Sentence-case for the reader; the class uppercases only what is drawn.
+              accessibilityLabel={step}
+              className="mt-1 text-[11px] font-semibold uppercase tracking-[1.5px] text-muted"
+            >
+              {step}
+            </Text>
+          ) : null}
         </View>
       </View>
       <StarBand height={14} />
