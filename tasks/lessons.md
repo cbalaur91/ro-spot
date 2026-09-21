@@ -33,3 +33,4 @@
 - A test that an inner control "doesn't trigger the outer one" can't tell nested from sibling — the inner `Pressable` wins the responder either way. Assert the structure: `within(outer).queryByRole(...)` is null.
 
 - Ship every ticket as a branch + PR (`<issue>-<slug>`, body `Closes #N`), never a commit on `main`: /implement's "commit to the current branch" means the feature branch, so branch before the first commit.
+- A custom `react-native-maps` marker on Android stops redrawing its view once it settles and only starts again when the view's own size changes (`MapMarker.java`): a pin that changes look inside a fixed box keeps its old image. Put the changing state in the marker's `key` so a new look is a new marker.

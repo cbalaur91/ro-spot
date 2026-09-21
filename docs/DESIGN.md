@@ -146,8 +146,8 @@ own ground and needs neither. The other thing a border can be is the whole rhomb
 | `10` | `transparent`, 1px `line` border | The List card's no-photo tile (§3, Thumbnail). An outline, because there is nothing there. |
 | `10` | `line` | The detail screen's not-found notice. |
 | `11` | `cherry` | The Map header's accent; the web map stand-in. |
-| `17` (13px core) | category | The map pin — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. Bare, the web stand-in for the Add pin. |
-| `25` | category | The Add pin (§4.5) — 3px `surface` ring, the map pin's shadow. A size up because it is dragged, not just seen. |
+| `17` (13px core) | category | The map pin, unselected — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. Bare, the web stand-in for the Add pin. |
+| `25` | category | The Add pin (§4.5) — 3px `surface` ring, the map pin's shadow. A size up because it is dragged, not just seen. Also the selected browse pin (§4.1), where the size up says which place the card is showing. |
 | `44` | `cherry` | Profile's identity mark — `radius` 8, holding counter-rotated initials. The one rhomb big enough to carry content. |
 
 `radius` softens the corners; children are laid over the rhomb's centre **rotated with it**,
@@ -352,20 +352,42 @@ stays unobstructed. Header row: 22px wordmark at the 24 gutter, an 11px cherry r
 opposite, `pb-2.5 pt-1.5`. Then the 14px star band edge to edge, then the chip row. The map
 fills the rest.
 
-Pins are rhombs, no stem: category tint, 2px `surface` ring, `0px 1px 3px rgba(0,0,0,0.3)`,
+Pins are rhombs, no stem: category tint, `surface` ring, `0px 1px 3px rgba(0,0,0,0.3)`,
 anchored `{x: 0.5, y: 1}` so the rhomb's lower vertex marks the coordinate. Black in the
 shadow rather than `ink` — a pin has to lift off map tiles whose colours aren't ours to
 match. `tracksViewChanges` stays on: switching it off is the usual fix for hundreds of
 markers, but on Android it can leave a custom pin blank on first paint, and the launch
-dataset is 10–20 places. Tapping the **callout** navigates, not the pin.
+dataset is 10–20 places.
+
+**Browse selection.** One pin is always the selected one while there are places: the one
+the user tapped, or until they tap one, the nearest. The selected pin is the Add map's rhomb
+— **25px with a 3px ring**, raised `zIndex` — and every other pin stays **17px / 2px**. No
+animation between them. A tap selects without moving the camera (`moveOnMarkerPress={false}`)
+and without leaving the map; the card is what opens the place. Empty-map taps and panning
+leave the selection alone.
+
+- Until the user picks a pin, the selection follows the nearest place — including when
+  location resolves and the list re-sorts. After a pick, a re-sort keeps it.
+- A refresh or a chip that takes the picked place off the map **forgets** the pick: the
+  card falls back to the nearest remaining place, the camera stays put, and lifting the
+  chip again does not bring the old pick back. No places, no selection and no place card.
+
+Both sizes draw inside **one 44 × 40 box**, the rhomb stood on its foot. Android draws a
+custom marker into a bitmap the size of its view, so a rotated square overhangs and clips
+unless the box is sized to its diagonal, and a box that changed size with the selection
+would move the tip. The marker's `key` carries the selection: Android stops re-drawing a
+marker's view once it settles and only starts again when the view's own size changes, so a
+pin resized in place keeps its old image. A remount is a new image.
 
 The foot of the map holds exactly one card, and three things can stand in it:
 
 1. **Error** — the notice and a bare cherry `actions.retry`.
-2. **Nearest place** — the first of the distance-sorted visible list (chips included: a
-   filtered map's nearest place is the nearest place the user asked to see). Eyebrow, name
-   `text-[16px] leading-5`, address, bare distance. The whole card is one button to that
-   place's detail.
+2. **Selected place** — the tapped pin's place, or the first of the distance-sorted visible
+   list (chips included: a filtered map's nearest place is the nearest place the user asked
+   to see). Eyebrow, name `text-[16px] leading-5`, address, bare distance. The whole card
+   is one button to that place's detail, named `map.card` (name, category, address — a
+   card picked from a pin the reader can't see has to say which place it is) with the hint
+   `map.cardHint`.
 3. **Empty** — `filters.noMatch` when chips are on, `map.empty` when they aren't. Blaming
    the chips for an empty dataset would send the user hunting for a filter to undo.
 
@@ -734,6 +756,12 @@ Deliberate, and not to be "fixed" back:
   hero. The gallery pages, and page marks already say how many photos there are.
 - **The detail screen keeps its contact rows.** The canvas doesn't draw them; phone, website
   and social are v1 spec fields and the screen would be lying without them.
+- **The map has no callout.** The canvas draws none; the first build used the platform's
+  callout as the tap that meant "open this". Pins carry no title or description
+  now: a tap selects, the card at the foot says which place it is in the language's own
+  type, and the card opens it. A native bubble would have said the same thing a second
+  time, in the OS's design. TalkBack reads the pins as bare markers; the List is the
+  accessible way to browse every result.
 - **The map's bottom card is `surface`, not white.** Every other card is white. This one
   sits on map tiles, where the app's own paper is what lifts it off them.
 - **Photo page marks are centred.** They were aligned to a gutter the full-bleed hero

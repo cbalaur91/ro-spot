@@ -1212,3 +1212,36 @@ worth one shared component later); no rate limit or per-person uniqueness on rep
 
 Found in passing: the emulator test account's password in auto-memory didn't match
 Supabase; reset it to the documented one via the admin API.
+
+## Issue #29 — Tapping a pin selects the place on the Map card
+
+Seams: `PlacesMap` props (`selectedId`, `onSelect`) and the Map screen's card, both through
+the existing mocked-`react-native-maps` screen suite.
+
+- [x] A. Before screenshots on the emulator (EN, RO, large text) → verify: pins + card captured
+- [x] B. Screen tests first: no title/description/callout; pin press selects without camera
+      move (`moveOnMarkerPress={false}`); card follows nearest until a pick; pick survives
+      re-sort; removed pick falls back to nearest; no results clears; label + hint; RO strings
+      → verify: new tests fail on main's code
+- [x] C. Selection state in `index.tsx`, `SelectedPlace` card, `PlacesMap` props (the web
+      stand-in takes `_props`, so it needs no change) → verify: suite green, typecheck clean
+- [x] D. Pin: 25/3 selected, 17/2 otherwise, raised zIndex, fixed marker box so Android's
+      bitmap never clips the rotated rhomb or moves its tip → verify: emulator screenshot
+- [x] E. DESIGN.md §4.1 + §5 departure → verify: read against the code
+- [x] F. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [x] G. Emulator pass EN/RO/large text + TalkBack on the card → verify: after screenshots
+- [x] H. `/code-review`, fix, commit, PR
+
+Done 2026-09-21. `npm test` 407 green, typecheck + lint clean, Android bundle exports. Emulator
+(EN, RO, font 1.3): tap selects and grows the pin, card follows, camera stays; seven swaps
+without a stale image; empty-map tap and pan keep the pick; a chip that removes it falls back
+to the nearest; the card opens details. Shots `~/.cache/rospot-shots/29-*.png`.
+
+**Found on the emulator:** the first cut kept one marker per place and changed the rhomb
+inside a fixed box — Android never redrew it, so the tapped pin stayed small. The marker's
+`key` now carries the selection (see lessons). **Decided:** a pick removed by a chip or a
+refresh is forgotten, not parked. **Not fully verified:** TalkBack's spoken hint — adb taps
+activate rather than focus under TalkBack; the card's content-desc was read from the UI dump,
+and the pins read "Map Marker" (the List is the accessible route, per the ticket). The
+selected pin's 1–3px of shadow under its tip is cut at the bitmap's edge — barely visible.
+iOS unverified (`moveOnMarkerPress` is Android-only; Apple Maps doesn't recentre anyway).

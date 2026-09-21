@@ -41,6 +41,11 @@ export default {
     error: 'Places could not be loaded.',
     webUnsupported: 'The map needs the iOS or Android app.',
     webUnsupportedHint: 'The same places are in the List tab.',
+    // The card at the map's foot, as a screen reader hears it: which place,
+    // what kind, where — then what a tap does, because the card is not a link
+    // that says so itself.
+    card: '{{name}}, {{category}}, {{address}}',
+    cardHint: 'Opens place details',
   },
   list: {
     subtitle: 'Romanian places across the US',
