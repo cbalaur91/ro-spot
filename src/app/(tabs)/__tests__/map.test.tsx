@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen, userEvent, within } from '@testing-library/react-native';
+import { act, fireEvent, render, screen, userEvent, within } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { StyleSheet } from 'react-native';
 
-import { DEFAULT_ORIGIN } from '@/geo';
+import { DEFAULT_ORIGIN, DEFAULT_REGION, nearbyRegion } from '@/geo';
 import i18n from '@/i18n';
 import { CategoryFilterProvider } from '@/state/categoryFilter';
 
@@ -17,15 +17,24 @@ jest.mock('expo-router', () => ({ useRouter: () => ({ push: mockPush }) }));
 
 const mockPush = jest.fn();
 const mockAnimateToRegion = jest.fn();
+let mockMapReadsReady = true;
+const mockMapSize = { width: 400, height: 700 };
 
 // `react-native-maps` is a native module with nothing to render under Jest.
 // The stand-in keeps the props the screen actually depends on observable.
 jest.mock('react-native-maps', () => {
   const { View: RNView } = jest.requireActual('react-native');
-  const { useImperativeHandle } = jest.requireActual('react');
+  const { useEffect, useImperativeHandle } = jest.requireActual('react');
   // The camera is the one thing the screen drives through the ref.
   const MockMapView = ({ children, ref, ...props }: any) => {
     useImperativeHandle(ref, () => ({ animateToRegion: mockAnimateToRegion }));
+    // A laid-out map that reports ready, as the native one does once its SDK
+    // is up — unless a test wants to hold it back and say when.
+    useEffect(() => {
+      props.onLayout?.({ nativeEvent: { layout: { x: 0, y: 0, ...mockMapSize } } });
+      if (mockMapReadsReady) props.onMapReady?.();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
     return (
       <RNView testID="map" {...props}>
         {children}
@@ -111,6 +120,7 @@ beforeEach(async () => {
   queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false, gcTime: 0 } },
   });
+  mockMapReadsReady = true;
   fetchApprovedPlaces.mockResolvedValue([cathedral, bakery]);
   useOrigin.mockReturnValue({
     origin: DEFAULT_ORIGIN,
@@ -279,23 +289,6 @@ describe('Map tab', () => {
     expect(card(bakery)).toBeTruthy();
   });
 
-  it('leaves the camera where it is when a fallback changes the selection', async () => {
-    useOrigin.mockReturnValue({
-      origin: DEFAULT_ORIGIN,
-      isResolved: true,
-      isUserLocation: true,
-    });
-    await renderScreen(<MapScreen />);
-    await pressPin(cathedral.id);
-    // Once, for the location fix.
-    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
-
-    await userEvent.press(screen.getByRole('button', { name: 'Food & Drink' }));
-
-    expect(card(bakery)).toBeTruthy();
-    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
-  });
-
   it('falls back to the nearest remaining place when a refresh removes the pick', async () => {
     await renderScreen(<MapScreen />);
     await pressPin(cathedral.id);
@@ -459,5 +452,333 @@ describe('Map tab', () => {
     await renderScreen(<MapScreen />);
 
     expect((await screen.findByTestId('map')).props.showsUserLocation).toBe(false);
+  });
+});
+
+// Somewhere north-west of the fallback, so a frame around the device can't be
+// mistaken for one around downtown Detroit.
+const DEVICE = { lat: 42.4734, lng: -83.2219 };
+const FIX = { origin: DEVICE, isResolved: true, isUserLocation: true };
+const DENIED = { origin: DEFAULT_ORIGIN, isResolved: true, isUserLocation: false };
+const LOCATING = { origin: DEFAULT_ORIGIN, isResolved: false, isUserLocation: false };
+
+// Eight historic places strung north of the device, ~3.5 miles apart, and a
+// bakery just south of it — the nearest place of all.
+const churches = Array.from({ length: 8 }, (_, i) => ({
+  id: `h${i + 1}`,
+  name: `Church ${i + 1}`,
+  address: `${i + 1} Main St`,
+  category: 'historic',
+  lat: DEVICE.lat + 0.05 * (i + 1),
+  lng: DEVICE.lng,
+}));
+const corner = {
+  id: 'f1',
+  name: 'Corner Bakery',
+  address: '1 Elm St',
+  category: 'food_drink',
+  lat: DEVICE.lat - 0.02,
+  lng: DEVICE.lng,
+};
+
+type Point = { lat: number; lng: number };
+type CameraRegion = {
+  latitude: number;
+  longitude: number;
+  latitudeDelta: number;
+  longitudeDelta: number;
+};
+
+const cameraMoves = () => mockAnimateToRegion.mock.calls.map(([region]) => region as CameraRegion);
+const lastCamera = () => cameraMoves().at(-1)!;
+
+// Android turns a region into bounds as centre ± half the delta.
+const contains = (region: CameraRegion, point: Point) =>
+  Math.abs(point.lat - region.latitude) <= region.latitudeDelta / 2 &&
+  Math.abs(point.lng - region.longitude) <= region.longitudeDelta / 2;
+
+const framedIds = (region: CameraRegion) =>
+  [corner, ...churches].filter((place) => contains(region, place)).map((place) => place.id);
+
+const control = (name: string) => screen.getByRole('button', { name });
+const CLOSEST = 'Show the closest places on the map';
+const MY_LOCATION = 'Show my location on the map';
+const DETROIT = 'Show Metro Detroit on the map';
+
+async function settle() {
+  // The pins are there once the places are.
+  await screen.findAllByTestId('marker');
+}
+
+describe('Map framing and controls', () => {
+  beforeEach(() => {
+    fetchApprovedPlaces.mockResolvedValue([corner, ...churches]);
+    useOrigin.mockReturnValue(FIX);
+  });
+
+  async function relocate(state: typeof FIX, rerender: (ui: ReactElement) => Promise<void>) {
+    useOrigin.mockReturnValue(state);
+    await rerender(wrap(<MapScreen />));
+  }
+
+  it('opens framed on the nearest five and the device beside them', async () => {
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+    expect(contains(lastCamera(), DEVICE)).toBe(true);
+  });
+
+  it('leaves the device out when the nearest place is more than fifty miles off', async () => {
+    // ~100 miles south.
+    useOrigin.mockReturnValue({ ...FIX, origin: { lat: DEVICE.lat - 1.45, lng: DEVICE.lng } });
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+    expect(contains(lastCamera(), { lat: DEVICE.lat - 1.45, lng: DEVICE.lng })).toBe(false);
+  });
+
+  it('zooms to the neighbourhood of a single result', async () => {
+    useOrigin.mockReturnValue(DENIED);
+    fetchApprovedPlaces.mockResolvedValue([corner]);
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(lastCamera()).toEqual(nearbyRegion(corner));
+  });
+
+  it('moves nothing and offers no Closest places without results', async () => {
+    fetchApprovedPlaces.mockResolvedValue([]);
+    await renderScreen(<MapScreen />);
+    await screen.findByText('No places on the map yet.');
+
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+    expect(screen.queryByRole('button', { name: CLOSEST })).toBeNull();
+  });
+
+  it('waits for the map before framing, and frames once it is ready', async () => {
+    mockMapReadsReady = false;
+    await renderScreen(<MapScreen />);
+    await settle();
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+
+    await act(async () => screen.getByTestId('map').props.onMapReady());
+
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+  });
+
+  it('waits for location without an interim move, then frames once', async () => {
+    useOrigin.mockReturnValue(LOCATING);
+    const { rerender } = await renderScreen(<MapScreen />);
+    await settle();
+    expect(mockAnimateToRegion).not.toHaveBeenCalled();
+
+    await relocate(FIX, rerender);
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+
+    // A later location change is not a reason to move the map again.
+    await relocate({ ...FIX, origin: DEFAULT_ORIGIN }, rerender);
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['a pan', () => screen.getByTestId('map').props.onPanDrag()],
+    [
+      'a gesture the map reports',
+      () =>
+        screen
+          .getByTestId('map')
+          .props.onRegionChangeStart({ ...DEFAULT_REGION }, { isGesture: true }),
+    ],
+    ['a pin picked before the fix', () => marker('h7').props.onPress()],
+    ['a press on Closest places', () => userEvent.press(control(CLOSEST))],
+  ])('never frames on a fix that arrives after %s', async (_, interact) => {
+    useOrigin.mockReturnValue(LOCATING);
+    const { rerender } = await renderScreen(<MapScreen />);
+    await settle();
+    await act(async () => {
+      await interact();
+    });
+    const moves = mockAnimateToRegion.mock.calls.length;
+
+    await relocate(FIX, rerender);
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(moves);
+  });
+
+  it('keeps the pin picked before the fix selected once the fix arrives', async () => {
+    useOrigin.mockReturnValue(LOCATING);
+    const { rerender } = await renderScreen(<MapScreen />);
+    await pressPin('h7');
+
+    await relocate(FIX, rerender);
+
+    expect(card(churches[6])).toBeTruthy();
+  });
+
+  it("doesn't count the camera's own moves as the user's", async () => {
+    useOrigin.mockReturnValue(LOCATING);
+    const { rerender } = await renderScreen(<MapScreen />);
+    await settle();
+    await act(async () =>
+      screen
+        .getByTestId('map')
+        .props.onRegionChangeStart({ ...DEFAULT_REGION }, { isGesture: false })
+    );
+
+    await relocate(FIX, rerender);
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  it("doesn't let a press on the disabled location button cancel the framing", async () => {
+    useOrigin.mockReturnValue(LOCATING);
+    const { rerender } = await renderScreen(<MapScreen />);
+    await settle();
+    await userEvent.press(control('Finding your location'));
+
+    await relocate(FIX, rerender);
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  it('never moves the camera for a background refresh', async () => {
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    fetchApprovedPlaces.mockResolvedValue([...churches]);
+    await act(() => queryClient.refetchQueries());
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(1);
+  });
+
+  it('reframes on the button, keeping a selection that is among the five', async () => {
+    await renderScreen(<MapScreen />);
+    await pressPin('h3');
+    // The user wandered off.
+    await act(async () => screen.getByTestId('map').props.onPanDrag());
+
+    await userEvent.press(control(CLOSEST));
+
+    expect(mockAnimateToRegion).toHaveBeenCalledTimes(2);
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+    expect(card(churches[2])).toBeTruthy();
+  });
+
+  it('selects the nearest when the button frames the selection out', async () => {
+    await renderScreen(<MapScreen />);
+    await pressPin('h8');
+
+    await userEvent.press(control(CLOSEST));
+
+    expect(card(corner)).toBeTruthy();
+  });
+
+  it('reframes on a chip and moves the selection to the nearest when it falls outside', async () => {
+    await renderScreen(<MapScreen />);
+    await settle();
+    await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
+    expect(framedIds(lastCamera())).toEqual(['h1', 'h2', 'h3', 'h4', 'h5']);
+
+    // The eighth-nearest church, then a second chip.
+    await pressPin('h8');
+    await userEvent.press(screen.getByRole('button', { name: 'Food & Drink' }));
+
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+    expect(card(corner)).toBeTruthy();
+  });
+
+  it('keeps a selection a chip change frames in', async () => {
+    await renderScreen(<MapScreen />);
+    await pressPin('h2');
+
+    await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
+
+    expect(card(churches[1])).toBeTruthy();
+  });
+
+  it('recentres on the device from My location and keeps the selection', async () => {
+    await renderScreen(<MapScreen />);
+    await pressPin('h8');
+
+    await userEvent.press(control(MY_LOCATION));
+
+    expect(lastCamera()).toEqual(nearbyRegion(DEVICE));
+    expect(card(churches[7])).toBeTruthy();
+    expect(screen.getByText('My location')).toBeTruthy();
+  });
+
+  it('shows the location button busy and disabled until location answers', async () => {
+    useOrigin.mockReturnValue(LOCATING);
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    const button = control('Finding your location');
+    expect(button).toBeDisabled();
+    expect(button).toBeBusy();
+    expect(within(button).getByText('My location')).toBeTruthy();
+  });
+
+  it('offers Detroit, not "my location", when location is off', async () => {
+    useOrigin.mockReturnValue(DENIED);
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(screen.queryByText('My location')).toBeNull();
+    expect(within(control(DETROIT)).getByText('Detroit')).toBeTruthy();
+
+    await userEvent.press(control(DETROIT));
+    expect(lastCamera()).toEqual(DEFAULT_REGION);
+    expect(screen.getByTestId('map').props.showsUserLocation).toBe(false);
+  });
+
+  it('frames around the places alone when location is off', async () => {
+    useOrigin.mockReturnValue(DENIED);
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    // Five nearest to downtown Detroit, which the frame doesn't reach for.
+    expect(framedIds(lastCamera())).toEqual(['f1', 'h1', 'h2', 'h3', 'h4']);
+    expect(contains(lastCamera(), DEFAULT_ORIGIN)).toBe(false);
+  });
+
+  it('names the controls in Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    useOrigin.mockReturnValue(DENIED);
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(within(control('Arată pe hartă cele mai apropiate locuri')).getByText('Cele mai apropiate')).toBeTruthy();
+    expect(within(control('Arată zona Detroit pe hartă')).getByText('Detroit')).toBeTruthy();
+  });
+
+  it('pads the map for the card alone, and fits clear of the controls too', async () => {
+    await renderScreen(<MapScreen />);
+    await settle();
+    await fireEvent(screen.getByTestId('map-card'), 'layout', {
+      nativeEvent: { layout: { x: 0, y: 120, width: 372, height: 100 } },
+    });
+    await fireEvent(screen.getByTestId('map-foot'), 'layout', {
+      nativeEvent: { layout: { x: 14, y: 368, width: 372, height: 220 } },
+    });
+
+    // The card and the gap under it: the Google logo stands just above the card.
+    expect(screen.getByTestId('map').props.mapPadding.bottom).toBe(112);
+
+    await userEvent.press(control(CLOSEST));
+
+    // The padded viewport is 700 - 112 tall; the controls take the bottom 120
+    // of it. The southernmost point framed has to land above them.
+    const region = lastCamera();
+    const mercator = (lat: number) => Math.log(Math.tan(Math.PI / 4 + (lat * Math.PI) / 360));
+    const north = mercator(region.latitude + region.latitudeDelta / 2);
+    const south = mercator(region.latitude - region.latitudeDelta / 2);
+    const viewport = mockMapSize.height - 112;
+    const y = ((north - mercator(corner.lat)) / (north - south)) * viewport;
+    expect(y).toBeLessThanOrEqual(viewport - 120);
+    // …and not by a whole second clearance: counted once, not twice.
+    expect(y).toBeGreaterThan(viewport - 120 - 40);
   });
 });

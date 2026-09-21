@@ -36,6 +36,13 @@ export default {
     webUnsupportedHint: 'Aceleași locuri sunt în fila Listă.',
     card: '{{name}}, {{category}}, {{address}}',
     cardHint: 'Deschide detaliile locului',
+    closest: 'Cele mai apropiate',
+    closestLabel: 'Arată pe hartă cele mai apropiate locuri',
+    locate: 'Locația mea',
+    locateLabel: 'Arată locația mea pe hartă',
+    locating: 'Se caută locația ta',
+    detroit: 'Detroit',
+    detroitLabel: 'Arată zona Detroit pe hartă',
   },
   list: {
     subtitle: 'Locuri românești din Statele Unite',

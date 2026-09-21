@@ -286,6 +286,22 @@ A pill that carries a filter.
   `accessibilityLabel` from `filters.label`
 - Each chip: `accessibilityRole="button"` and `accessibilityState={{ selected }}`
 
+### Map control
+
+A pill that drives the map's camera — §4.1's Closest places and location control. The map's
+furniture, not the app's voice, so it takes none of the cherry.
+
+- `min-h-[44px] max-w-full flex-row items-center gap-2 rounded-full border border-line
+  bg-surface px-4 py-2 active:opacity-80`, and the map card's shadow (`0px 4px 14px {ink}1F`)
+  — it stands on the same tiles the card does
+- A 16px Ionicon in `muted`, then the label `shrink text-[13px] font-semibold leading-[17px]
+  text-ink`. The label wraps rather than truncates; `max-w-full` keeps the pill inside the
+  screen when enlarged text wants more
+- Waiting: a small `ActivityIndicator` in `muted` where the icon was, `disabled`, and
+  `accessibilityState={{ disabled: true, busy: true }}`
+- The drawn label is short (`map.closest`, `map.locate`, `map.detroit`); the accessible one is
+  a whole sentence (`map.closestLabel`, …) saying what the press will show
+
 ### Clear filters
 
 Every chip off in one tap — back to the empty set, which already means "show everything",
@@ -406,8 +422,8 @@ leave the selection alone.
 - Until the user picks a pin, the selection follows the nearest place — including when
   location resolves and the list re-sorts. After a pick, a re-sort keeps it.
 - A refresh or a chip that takes the picked place off the map **forgets** the pick: the
-  card falls back to the nearest remaining place, the camera stays put, and lifting the
-  chip again does not bring the old pick back. No places, no selection and no place card.
+  card falls back to the nearest remaining place, and lifting the chip again does not bring
+  the old pick back. No places, no selection and no place card.
 
 Both sizes draw inside **one 44 × 40 box**, the rhomb stood on its foot. Android draws a
 custom marker into a bitmap the size of its view, so a rotated square overhangs and clips
@@ -435,10 +451,50 @@ a map that wants the rest of the screen.
 
 While the query is pending, no card shows.
 
-The screen measures whatever stands in the foot and hands `PlacesMap` the covered height as
-`footInset`, which the map takes as bottom `mapPadding`. That keeps the Google logo — which
-the Maps terms require to stay visible — above the card, and centres the map on the part of
-it the user can see. Don't position the card without going through that wrapper.
+**Framing what's close.** The map opens on Metro Detroit (`DEFAULT_REGION`) and is then
+framed once on the nearest places. One rule, `closestFraming` in `src/framing.ts`, runs in
+three places: the opening, every chip change, and the Closest places control.
+
+- It fits the **nearest five** of the filtered, distance-sorted places. The user's own
+  position joins the fit only with a **device fix** and only when the nearest place is
+  **≤ 50 miles** away — otherwise the frame is a state of empty map with a dot at one end.
+  The Detroit fallback never joins: it is where distances are measured from, not where
+  anybody is.
+- One place and no user in the fit: `nearbyRegion` around it, the neighbourhood zoom.
+- Afterwards the selection stays only if it is among the five framed; otherwise the card
+  goes back to following the nearest.
+- The **opening** frame runs once, when the map reports ready, the places have arrived and
+  location has answered (fix or not) — no interim move, no timeout. Anything the user does
+  to the map first cancels it for good: a pan or pinch (`onPanDrag`, or
+  `onRegionChangeStart` with `isGesture`), a pin tap, or a press on an enabled control. The
+  camera's own moves and a press on the disabled location control don't count. A chip
+  change before the opening doesn't frame; the opening frames the filtered set itself.
+- Nothing else moves the camera: not a background refresh, not a later location change, not
+  a fallback selection.
+
+The fit is computed as a region (`fitRegion`) and handed to `animateToRegion`, not done with
+`fitToCoordinates`: on Android that call adds its edge padding to the map's own padding and
+leaves it there, which would lift the Google logo and shift every later move. A fitted point
+keeps a pin's box clear of the map's edges (52 at the top, 36 at the sides).
+
+**Controls.** A right-aligned column of map controls (§3) stands `mb-2.5` above the card,
+`gap-2` apart — Closest places, then location — so the Google logo at the card's left
+shoulder stays in sight.
+
+- **Closest places** (`scan-outline`) runs the framing rule. Hidden when there are no results.
+- **Location**, by what location has said: still asking → "My location", disabled and busy,
+  a spinner for its icon; a device fix → "My location" (`locate-outline`), which recentres
+  on `nearbyRegion` of the device; denied or failed → "Detroit" (`business-outline`), which
+  recentres on `DEFAULT_REGION`. It never asks for permission again, and never calls the
+  fallback "my location".
+- Neither control touches the selection, and nor does panning.
+
+The screen measures two heights. The **card** and its gap become `footInset`, which the map
+takes as bottom `mapPadding`: that keeps the Google logo — which the Maps terms require to
+stay visible — above the card, and centres the map on the part of it the user can see. The
+**whole foot**, controls included, becomes `fitInset`, and a fit clears the difference
+between the two on top of the padding — counted once, not twice. Don't position the card or
+the controls without going through that wrapper.
 
 Web has no map: `src/components/PlacesMap.tsx` says so on `bg-map-land` under an 11px cherry
 rhomb, and points at the List tab. Web is a dev convenience, not a release target.
@@ -877,6 +933,12 @@ Deliberate, and not to be "fixed" back:
   and the List is where a count means something — the Map's pins are their own count, so
   its header stays as drawn. Clear is text, not the canvas's "All" chip (the second
   divergence above still stands). #31.
+- **The Map has a Closest places control and a location control.** The canvas's map has no
+  controls. Browsing starts from "what's near me", and once a user has panned away there
+  was no way back short of leaving the tab. Both are surface pills rather than the
+  platform's round buttons (`showsMyLocationButton` stays off): the OS's button would be the
+  one control on the screen in someone else's design, and it knows nothing of the Detroit
+  fallback. #30.
 - **A List card with no photograph shows an outline rhomb in a bordered tile,** not the
   canvas's 45° hatch. The hatch is the canvas's mark for a photograph not yet chosen or not
   yet loaded; this tile means there isn't one, and an outline says "nothing here" where a
