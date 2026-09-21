@@ -14,7 +14,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChip } from '@/components/CategoryChips';
-import { Field, FormHeader, Input, PrimaryPill } from '@/components/Form';
+import { Field, FormHeader, FormLabel, Input, PrimaryPill } from '@/components/Form';
 import { PinMap } from '@/components/PinMap';
 import type { Coords } from '@/geo';
 import { geocodeAddress } from '@/geocode';
@@ -23,6 +23,7 @@ import { pickPhotos } from '@/photos';
 import { CATEGORIES } from '@/state/categoryFilter';
 import {
   checkDraft,
+  CONTACT_FIELDS,
   contactCount,
   LIMITS,
   type DraftFields,
@@ -127,10 +128,9 @@ function ContactToggle({
       onPress={onPress}
       className="min-h-[44px] flex-row items-center justify-between gap-2 active:opacity-70"
     >
-      <Text className="flex-1 text-[11px] font-semibold uppercase tracking-[0.8px] text-ink">
-        {label}
-        <Text className="font-normal normal-case tracking-normal text-muted">{` · ${suffix}`}</Text>
-      </Text>
+      <View className="flex-1">
+        <FormLabel label={label} suffix={suffix} />
+      </View>
       <Ionicons name={isOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.muted} />
     </Pressable>
   );
@@ -228,7 +228,7 @@ export function PlaceEditor({
     if (!check.ok) {
       setProblems(check.problems);
       // A problem nobody can see is one nobody can fix.
-      if (check.problems.phone || check.problems.website || check.problems.socialUrl) {
+      if (CONTACT_FIELDS.some((field) => check.problems[field])) {
         setShowContact(true);
       }
       return;

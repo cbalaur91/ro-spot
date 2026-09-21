@@ -150,6 +150,8 @@ export default {
     },
     optional: 'opțional',
     optionalLabel: '{{field}} (opțional)',
+    // Cel mult trei câmpuri, deci „1 câmp completat” și „2 câmpuri completate”;
+    // forma „de” rămâne pentru regulă, nu pentru formular.
     contact: {
       add: 'Adaugă date de contact',
       title: 'Date de contact',

@@ -249,10 +249,12 @@ Uppercase, semibold, `tracking-[1.5px]`, in the category tint.
 - `11px` on the detail screen, `leading-4` — the same eyebrow at the scale of a screen
   rather than a row
 - `muted` instead of a tint when the eyebrow labels a field rather than a category (the
-  contact rows)
+  contact rows), or says where a form is rather than what a place is (the Add form's step
+  line, §4.5)
 
-Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink`. Use them
-only above an input or a group (§4.5, §4.8).
+Form field labels are a different mark: `11px` semibold, `tracking-[0.8px]`, `ink` —
+`FormLabel` in `src/components/Form.tsx`. Use them only above an input or a group, or as the
+toggle that folds a group away (§4.5's contact details, §4.8).
 
 ### Pills
 
@@ -392,6 +394,8 @@ The restyle costs a screen reader nothing, and neither should the next change.
   where the text inside it wouldn't do.
 - A List card's actions are links, siblings of the body, each named with its place. The
   detail screen's Directions and Call pills reuse those names.
+- A disclosure is a button with `accessibilityState={{ expanded }}`, labelled with what it
+  holds rather than what it does (§4.5's contact details), and at least 44 tall.
 - Touch targets reach 44 through padding, not `hitSlop`, where the control hangs off an
   absolutely positioned parent — Android clips touch at a parent's bounds.
 
@@ -653,7 +657,8 @@ Every step keeps the **page header** at the 24 gutter — `text-[24px] font-bold
 tracking-[-0.4px]` title over a `text-[12.5px] text-muted` subtitle (`add.subtitle`: the
 moderation queue is stated up front, not after submitting) — and the 14px star band edge to
 edge under it. Under the subtitle, `mt-1`, the step in the muted eyebrow (§3: `text-[11px]
-font-semibold uppercase tracking-[1.5px] text-muted`, sentence-case `accessibilityLabel`):
+font-semibold uppercase leading-4 tracking-[1.5px] text-muted`, sentence-case
+`accessibilityLabel`):
 `add.steps.details`, "Step 1 of 2 — Place details", on the form, and `add.steps.pin`, "Step
 2 of 2 — Confirm location", on the pin. The done state has none — it isn't a step.
 

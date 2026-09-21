@@ -51,7 +51,7 @@ export function FormHeader({
             <Text
               // Sentence-case for the reader; the class uppercases only what is drawn.
               accessibilityLabel={step}
-              className="mt-1 text-[11px] font-semibold uppercase tracking-[1.5px] text-muted"
+              className="mt-1 text-[11px] font-semibold uppercase leading-4 tracking-[1.5px] text-muted"
             >
               {step}
             </Text>
@@ -60,6 +60,30 @@ export function FormHeader({
       </View>
       <StarBand height={14} />
     </>
+  );
+}
+
+/**
+ * The form-label mark: `11px` semibold ink, uppercased by class, with an
+ * optional normal-weight muted suffix. Stored sentence-case, and read that way.
+ */
+export function FormLabel({
+  label,
+  suffix,
+  ...props
+}: { label: string; suffix?: string } & React.ComponentProps<typeof Text>) {
+  return (
+    <Text
+      // Sentence-case for the reader; the class uppercases only what is drawn.
+      accessibilityLabel={suffix ? `${label}, ${suffix}` : label}
+      className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink"
+      {...props}
+    >
+      {label}
+      {suffix ? (
+        <Text className="font-normal normal-case tracking-normal text-muted">{` · ${suffix}`}</Text>
+      ) : null}
+    </Text>
   );
 }
 
@@ -90,18 +114,12 @@ export function Field({
 
   return (
     <View className="gap-1.5">
-      <Text
+      <FormLabel
+        label={label}
+        suffix={suffix}
         accessibilityElementsHidden={!spoken}
         importantForAccessibility={spoken ? 'auto' : 'no'}
-        // Sentence-case for the reader; the class uppercases only what is drawn.
-        accessibilityLabel={suffix ? `${label}, ${suffix}` : label}
-        className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink"
-      >
-        {label}
-        {suffix ? (
-          <Text className="font-normal normal-case tracking-normal text-muted">{` · ${suffix}`}</Text>
-        ) : null}
-      </Text>
+      />
       {children}
       {problem ? (
         <Text accessibilityLiveRegion="polite" className="text-[11.5px] text-cherry">

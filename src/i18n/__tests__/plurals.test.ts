@@ -12,11 +12,13 @@ describe('plurals on an engine without Intl.PluralRules', () => {
   });
 
   it.each([
-    [1, '1 loc'],
-    [2, '2 locuri'],
-    [0, '0 locuri'],
-    [20, '20 de locuri'],
-  ])('still counts %i in Romanian as “%s”', async (count, label) => {
+    ['list.count', 1, '1 loc'],
+    ['list.count', 2, '2 locuri'],
+    ['list.count', 0, '0 locuri'],
+    ['list.count', 20, '20 de locuri'],
+    ['add.contact.added', 1, '1 câmp completat'],
+    ['add.contact.added', 2, '2 câmpuri completate'],
+  ] as const)('still says %s = %i in Romanian as “%s”', async (key, count, label) => {
     // Standing in for Hermes.
     delete intl.PluralRules;
 
@@ -27,6 +29,6 @@ describe('plurals on an engine without Intl.PluralRules', () => {
     });
     await i18n.changeLanguage('ro');
 
-    expect(i18n.t('list.count', { count })).toBe(label);
+    expect(i18n.t(key, { count })).toBe(label);
   });
 });
