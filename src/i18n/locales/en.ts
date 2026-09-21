@@ -78,6 +78,12 @@ export default {
     // a photo that might be the only one.
     photo: 'Photo {{index}} of {{total}}',
     noPhotos: 'No photos of this place yet.',
+    // One photograph that didn't arrive, on its own page.
+    photoUnavailable: 'Photo unavailable',
+    // Named by number: every failed page has one, and a screen reader walks them all.
+    retryPhoto: 'Try photo {{index}} again',
+    // Every photograph failed, so there is no gallery left to show it in.
+    photosFailed: "The photos of this place didn't load.",
     call: 'Call',
     website: 'Website',
     social: 'Social',

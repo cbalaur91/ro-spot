@@ -11,7 +11,7 @@ import {
 import type { ReactElement } from 'react';
 import { Alert, Linking, Platform } from 'react-native';
 
-import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
+import { SEED_PHOTO_PATHS, SEEDED_APPROVED_PLACE } from '@/data/fixtures';
 import { DEFAULT_ORIGIN } from '@/geo';
 import i18n from '@/i18n';
 import { directionsUrl } from '@/links';
@@ -45,7 +45,12 @@ const { fetchApprovedPlaces } = jest.requireMock('@/data/places') as {
 };
 const { useOrigin } = jest.requireMock('@/hooks/useOrigin') as { useOrigin: jest.Mock };
 
-const seededPlace = { ...SEEDED_APPROVED_PLACE, created_at: '2026-08-21T00:00:00Z' };
+const seededPlace = {
+  ...SEEDED_APPROVED_PLACE,
+  // Photographed here, so the thumbnail has something to show.
+  photo_paths: SEED_PHOTO_PATHS,
+  created_at: '2026-08-21T00:00:00Z',
+};
 
 // Near, then far, in the order the query returns them — so passing the ordering
 // assertion takes an actual sort, not luck.

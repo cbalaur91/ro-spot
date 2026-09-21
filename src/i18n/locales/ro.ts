@@ -62,6 +62,9 @@ export default {
   detail: {
     photo: 'Fotografia {{index}} din {{total}}',
     noPhotos: 'Încă nu există fotografii ale acestui loc.',
+    photoUnavailable: 'Fotografie indisponibilă',
+    retryPhoto: 'Încearcă din nou fotografia {{index}}',
+    photosFailed: 'Fotografiile acestui loc nu s-au încărcat.',
     call: 'Sună',
     website: 'Site web',
     social: 'Rețele sociale',

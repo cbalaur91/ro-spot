@@ -15,7 +15,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { PhotoGallery } from '@/components/PhotoGallery';
-import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
+import { Loading, LoadFailed, RetryPill, ScreenNotice } from '@/components/ScreenState';
 import type { Place } from '@/data/places';
 import { distanceMiles, milesLabel } from '@/geo';
 import { useOrigin } from '@/hooks/useOrigin';
@@ -282,92 +282,192 @@ function PlaceActions({ place }: { place: Place }) {
 }
 
 /**
- * The way back, floating over the photographs rather than sitting above them:
- * the hero runs to the top of the screen, so the chip is what keeps a dark
- * photograph from swallowing the control.
+ * The way back: a 32px chip, the canvas's, with a shadow that keeps a dark
+ * photograph from swallowing it.
  *
- * The inset comes from a top-edge `SafeAreaView` rather than from
- * `useSafeAreaInsets`, which needs a provider mounted above it — this screen is
- * pushed onto a stack, and the chip should not depend on who mounted it.
+ * The chip is smaller than a finger, so the padding around it — not `hitSlop`,
+ * which Android clips at an absolutely positioned parent's edge — is what makes
+ * the touch target 44.
  */
 function BackChip() {
   const { t } = useTranslation();
   const router = useRouter();
 
   return (
-    <SafeAreaView edges={['top']} className="absolute left-2 top-0">
-      {/* The chip is the canvas's 32px and smaller than a finger, so the padding
-          around it — not `hitSlop`, which Android clips at this absolutely
-          positioned parent's edge — is what makes the touch target 44. */}
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t('actions.back')}
-        onPress={() => router.back()}
-        className="mt-2 p-1.5 active:opacity-70"
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={t('actions.back')}
+      onPress={() => router.back()}
+      className="mt-2 self-start p-1.5 active:opacity-70"
+    >
+      <View
+        className="h-8 w-8 items-center justify-center rounded-full bg-surface"
+        style={{ boxShadow: `0px 1px 4px ${colors.ink}26` }}
       >
-        <View
-          className="h-8 w-8 items-center justify-center rounded-full bg-surface"
-          style={{ boxShadow: `0px 1px 4px ${colors.ink}26` }}
-        >
-          <Ionicons name="chevron-back" size={20} color={colors.ink} />
-        </View>
-      </Pressable>
+        <Ionicons name="chevron-back" size={20} color={colors.ink} />
+      </View>
+    </Pressable>
+  );
+}
+
+/**
+ * The chip floating over the photographs rather than sitting above them: the
+ * hero runs to the top of the screen. Only ever over a real photograph — with
+ * nothing under it, a floating chip is just something in the way of the text.
+ *
+ * The inset comes from a top-edge `SafeAreaView` rather than from
+ * `useSafeAreaInsets`, which needs a provider mounted above it — this screen is
+ * pushed onto a stack, and the chip should not depend on who mounted it.
+ */
+function FloatingBackChip() {
+  return (
+    <SafeAreaView edges={['top']} className="absolute left-2 top-0">
+      <BackChip />
     </SafeAreaView>
   );
 }
 
 /**
- * The states with no photograph for the chip to float on, held clear of the
- * status bar the hero would otherwise run under.
+ * The states with no photograph for the chip to float on: held clear of the
+ * status bar the hero would otherwise run under, the chip first in the flow.
  */
 function WithoutHero({ children }: { children: React.ReactNode }) {
   return (
     <SafeAreaView edges={['top']} className="flex-1">
+      <View className="pl-2">
+        <BackChip />
+      </View>
       {children}
     </SafeAreaView>
   );
 }
 
+/**
+ * What stands at the top of a place with no photograph to show — none taken
+ * yet, or none that would load. A third of the screen of empty 4:3 box said
+ * "loading" when it meant "nothing here", so this is as short as the message:
+ * card-white from the very top edge, the Back chip in its flow, then one line
+ * that wraps, over a hairline.
+ */
+/** The compact header's message line, shared by the text and the rhomb beside it. */
+const HEADER_LINE = 18;
+
+function PlaceHeader({ message, onRetry }: { message: string; onRetry?: () => void }) {
+  // Enlarged text scales the message's line, and the box the rhomb is centred in
+  // has to scale with it.
+  const { fontScale } = useWindowDimensions();
+
+  return (
+    <View testID="place-header" className="border-b border-line bg-card">
+      <SafeAreaView edges={['top']}>
+        <View className="pl-2">
+          <BackChip />
+        </View>
+        <View className="min-h-[96px] justify-center py-4" style={{ paddingHorizontal: GUTTER }}>
+          <View className="flex-row items-start gap-3.5">
+            {/* One text line tall, so the rhomb marks the message's first line
+                rather than the middle of the message and its Retry. */}
+            <View className="justify-center" style={{ height: HEADER_LINE * fontScale }}>
+              <Diamond size={10} tint="transparent" border={colors.line} />
+            </View>
+            {/* A column of its own, so the message and the Retry under it wrap
+                at the text's width rather than beside each other. */}
+            <View className="flex-1 items-start gap-3">
+              <Text
+                className="text-[13px] text-muted"
+                style={{ lineHeight: HEADER_LINE }}
+              >
+                {message}
+              </Text>
+              {onRetry ? <RetryPill onPress={onRetry} /> : null}
+            </View>
+          </View>
+        </View>
+      </SafeAreaView>
+    </View>
+  );
+}
+
+/**
+ * Keyed by the place and its photo paths where it is mounted, so a different
+ * place — or this one after an edit — starts again from the first photograph
+ * with nothing marked as failed.
+ */
 function PlaceBody({ place }: { place: Place }) {
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
+  const [failed, setFailed] = useState<ReadonlySet<number>>(new Set());
   const tint = categoryColor[place.category];
   const links = contactLinks(place);
 
+  const paths = place.photo_paths;
+  const allFailed = paths.length > 0 && failed.size === paths.length;
+  const hasHero = paths.length > 0 && !allFailed;
+
+  const fail = (index: number) => setFailed((prev) => new Set(prev).add(index));
+  const retry = (index: number) =>
+    setFailed((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+
   return (
-    <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
-      {/* Full-bleed and hard against the top: the photographs lead, and the
-          chrome that would frame them floats over them instead. */}
-      <PhotoGallery paths={place.photo_paths} width={width} />
+    <>
+      <ScrollView contentContainerStyle={{ paddingBottom: 40 }}>
+        {hasHero ? (
+          // Full-bleed and hard against the top: the photographs lead, and the
+          // chrome that would frame them floats over them instead.
+          <PhotoGallery
+            paths={paths}
+            width={width}
+            failed={failed}
+            onFail={fail}
+            onRetry={retry}
+          />
+        ) : allFailed ? (
+          // Retry clears every failure at once, and the gallery that comes back
+          // mounts every image afresh.
+          <PlaceHeader
+            message={t('detail.photosFailed')}
+            onRetry={() => setFailed(new Set())}
+          />
+        ) : (
+          <PlaceHeader message={t('detail.noPhotos')} />
+        )}
 
-      <View style={{ paddingHorizontal: GUTTER }} className="pt-[18px]">
-        <Eyebrow tint={tint}>{t(`categories.${place.category}`)}</Eyebrow>
-        <Text className="mt-1.5 text-[23px] font-semibold leading-[29px] text-ink">
-          {place.name}
-        </Text>
-        <AddressLine place={place} />
-        <PlaceActions place={place} />
+        <View style={{ paddingHorizontal: GUTTER }} className="pt-[18px]">
+          <Eyebrow tint={tint}>{t(`categories.${place.category}`)}</Eyebrow>
+          <Text className="mt-1.5 text-[23px] font-semibold leading-[29px] text-ink">
+            {place.name}
+          </Text>
+          <AddressLine place={place} />
+          <PlaceActions place={place} />
 
-        {/* The signature, at the width of the text rather than the screen: here
-            it divides a block of prose instead of underwriting a header. */}
-        <View className="my-4">
-          <StarBand height={10} />
-        </View>
-
-        {/* Written by whoever submitted the place, shown as written. */}
-        <Text className="text-[13.5px] leading-[22px] text-ink">{place.description}</Text>
-
-        {links.length > 0 ? (
-          <View className="mt-[18px]">
-            {links.map((link) => (
-              <ContactRow key={link.key} link={link} />
-            ))}
+          {/* The signature, at the width of the text rather than the screen: here
+              it divides a block of prose instead of underwriting a header. */}
+          <View className="my-4">
+            <StarBand height={10} />
           </View>
-        ) : null}
 
-        <ReportAction placeId={place.id} />
-      </View>
-    </ScrollView>
+          {/* Written by whoever submitted the place, shown as written. */}
+          <Text className="text-[13.5px] leading-[22px] text-ink">{place.description}</Text>
+
+          {links.length > 0 ? (
+            <View className="mt-[18px]">
+              {links.map((link) => (
+                <ContactRow key={link.key} link={link} />
+              ))}
+            </View>
+          ) : null}
+
+          <ReportAction placeId={place.id} />
+        </View>
+      </ScrollView>
+
+      {/* After the scroll view, so it paints over the photographs it floats on. */}
+      {hasHero ? <FloatingBackChip /> : null}
+    </>
   );
 }
 
@@ -427,11 +527,8 @@ export default function PlaceDetailScreen() {
           </ScreenNotice>
         </WithoutHero>
       ) : (
-        <PlaceBody place={place} />
+        <PlaceBody key={`${place.id}:${place.photo_paths.join('\n')}`} place={place} />
       )}
-
-      {/* Last, so it paints over the photographs it floats on. */}
-      <BackChip />
     </View>
   );
 }

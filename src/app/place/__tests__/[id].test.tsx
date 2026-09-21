@@ -1,15 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
+  act,
   fireEvent,
   render,
   screen,
   userEvent,
   waitFor,
+  within,
 } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { Alert, Linking, Platform, StyleSheet } from 'react-native';
+import { Alert, Dimensions, Linking, Platform, StyleSheet } from 'react-native';
 
-import { SEEDED_APPROVED_PLACE } from '@/data/fixtures';
+import { SEED_PHOTO_PATHS, SEEDED_APPROVED_PLACE } from '@/data/fixtures';
 import { DEFAULT_ORIGIN } from '@/geo';
 import i18n from '@/i18n';
 import { directionsUrl } from '@/links';
@@ -45,6 +47,8 @@ const { useOrigin } = jest.requireMock('@/hooks/useOrigin') as { useOrigin: jest
 const cathedral = {
   ...SEEDED_APPROVED_PLACE,
   id: 'a',
+  // Photographed here, so the gallery has pages to show.
+  photo_paths: SEED_PHOTO_PATHS,
   created_at: '2026-08-21T00:00:00Z',
 };
 
@@ -143,13 +147,180 @@ describe('Place detail', () => {
     expect(screen.getByLabelText('Photo 1 of 2')).toBeTruthy();
   });
 
-  it('says so when a place has no photos yet', async () => {
-    fetchPlace.mockResolvedValue({ ...cathedral, photo_paths: [] });
+  describe('Photos', () => {
+    const { width } = Dimensions.get('window');
 
-    await renderScreen(<PlaceDetailScreen />);
+    /** Which page mark is solid — the page the gallery says you're on. */
+    function currentPage() {
+      return screen
+        .getAllByTestId(/^page-mark-/)
+        .findIndex((mark) => mark.props.testID.endsWith('-current'));
+    }
 
-    expect(await screen.findByText('No photos of this place yet.')).toBeTruthy();
-    expect(screen.queryAllByRole('image')).toHaveLength(0);
+    async function swipeTo(page: number) {
+      await fireEvent(screen.getByTestId('photo-gallery'), 'momentumScrollEnd', {
+        nativeEvent: { contentOffset: { x: page * width, y: 0 } },
+      });
+    }
+
+    async function failPhoto(index: number) {
+      await fireEvent(screen.getAllByRole('image')[index], 'error', {
+        error: 'timed out',
+      });
+    }
+
+    it('puts the Back chip over the photographs, not in a header', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      expect(screen.queryByTestId('place-header')).toBeNull();
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
+    });
+
+    it('gives a place with no photos a compact header, Back inside it', async () => {
+      fetchPlace.mockResolvedValue({ ...cathedral, photo_paths: [] });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      const header = await screen.findByTestId('place-header');
+      expect(within(header).getByText('No photos of this place yet.')).toBeTruthy();
+      // In the header's flow, and the only one: nothing floats over the message.
+      expect(within(header).getByRole('button', { name: 'Back' })).toBeTruthy();
+      expect(screen.getAllByRole('button', { name: 'Back' })).toHaveLength(1);
+      // Nothing to retry: there was never anything to load.
+      expect(within(header).queryByRole('button', { name: 'Try again' })).toBeNull();
+      expect(screen.queryAllByRole('image')).toHaveLength(0);
+      expect(screen.queryByTestId('photo-gallery')).toBeNull();
+    });
+
+    it('marks a photo that failed on its own page, and keeps your place', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await swipeTo(1);
+      await failPhoto(1);
+
+      const failed = screen.getByTestId('photo-failed-2');
+      expect(within(failed).getByText('Photo unavailable')).toBeTruthy();
+      // The same 4:3 page the photograph would have filled, so nothing shifts.
+      expect(StyleSheet.flatten(failed.props.style)).toMatchObject({
+        width,
+        aspectRatio: 4 / 3,
+      });
+      expect(screen.getAllByRole('image')).toHaveLength(1);
+      expect(currentPage()).toBe(1);
+      // The rest of the gallery is still a gallery, not the compact header.
+      expect(screen.queryByTestId('place-header')).toBeNull();
+    });
+
+    it('asks for a failed photo again when you retry it', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await failPhoto(1);
+      await userEvent.press(screen.getByRole('button', { name: 'Try photo 2 again' }));
+
+      const photos = screen.getAllByRole('image');
+      expect(photos.map((photo) => photo.props.source.uri)).toEqual([
+        'https://cdn.test/place-photos/seed/st-george-1.jpg',
+        'https://cdn.test/place-photos/seed/st-george-2.jpg',
+      ]);
+      expect(screen.queryByText('Photo unavailable')).toBeNull();
+    });
+
+    it('trades a gallery where every photo failed for the compact header', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await failPhoto(0);
+      await failPhoto(0);
+
+      const header = await screen.findByTestId('place-header');
+      expect(within(header).getByText("The photos of this place didn't load.")).toBeTruthy();
+      expect(within(header).getByRole('button', { name: 'Back' })).toBeTruthy();
+      expect(screen.queryByTestId('photo-gallery')).toBeNull();
+
+      // One Retry for all of them.
+      await userEvent.press(within(header).getByRole('button', { name: 'Try again' }));
+
+      expect(screen.getAllByRole('image')).toHaveLength(2);
+      expect(screen.queryByTestId('place-header')).toBeNull();
+      expect(screen.queryByText('Photo unavailable')).toBeNull();
+    });
+
+    it('starts over when the place comes back with other photos', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await swipeTo(1);
+      await failPhoto(1);
+
+      // The author edited the place: a new sequence of paths, the same id.
+      fetchPlace.mockResolvedValue({
+        ...cathedral,
+        photo_paths: ['u1/one.jpg', 'u1/two.jpg', 'u1/three.jpg'],
+      });
+      await act(() => queryClient.refetchQueries());
+
+      await waitFor(() => expect(screen.getAllByRole('image')).toHaveLength(3));
+      expect(screen.queryByText('Photo unavailable')).toBeNull();
+      expect(currentPage()).toBe(0);
+    });
+
+    it('starts over when another place comes back with the same photos', async () => {
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await failPhoto(0);
+
+      fetchPlace.mockResolvedValue({ ...cathedral, id: 'b' });
+      await act(() => queryClient.refetchQueries());
+
+      await waitFor(() => expect(screen.getAllByRole('image')).toHaveLength(2));
+      expect(screen.queryByText('Photo unavailable')).toBeNull();
+    });
+
+    it('says a photo is unavailable in Romanian too', async () => {
+      await i18n.changeLanguage('ro');
+      fetchPlace.mockResolvedValue(cathedral);
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      await screen.findAllByRole('image');
+      await failPhoto(0);
+      expect(screen.getByText('Fotografie indisponibilă')).toBeTruthy();
+      expect(
+        screen.getByRole('button', { name: 'Încearcă din nou fotografia 1' })
+      ).toBeTruthy();
+
+      await failPhoto(0);
+      expect(
+        await screen.findByText('Fotografiile acestui loc nu s-au încărcat.')
+      ).toBeTruthy();
+    });
+
+    it('says a place has no photos in Romanian too', async () => {
+      await i18n.changeLanguage('ro');
+      fetchPlace.mockResolvedValue({ ...cathedral, photo_paths: [] });
+
+      await renderScreen(<PlaceDetailScreen />);
+
+      expect(
+        await screen.findByText('Încă nu există fotografii ale acestui loc.')
+      ).toBeTruthy();
+    });
   });
 
   it('hides the contact links a place does not have', async () => {

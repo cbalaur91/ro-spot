@@ -20,7 +20,14 @@ export const SEEDED_APPROVED_PLACE = {
   phone: null,
   website: null,
   social_url: null,
-  // Written by `20260821000300_seed_walking_skeleton_photos.sql`. Generated
-  // placeholders, not photographs — see that migration.
-  photo_paths: ['seed/st-george-1.jpg', 'seed/st-george-2.jpg'] as string[],
+  // Emptied by `20260921000000_clear_seed_placeholder_photos.sql`: nobody has
+  // photographed it yet, and the placeholders it had said so less honestly.
+  photo_paths: [] as string[],
 } as const;
+
+/**
+ * The generated placeholders `scripts/upload-seed-photos.sh` put in the bucket.
+ * No place shows them any more, but the objects are still there, so they are what
+ * the storage suite reads and what a gallery fixture can point at.
+ */
+export const SEED_PHOTO_PATHS = ['seed/st-george-1.jpg', 'seed/st-george-2.jpg'];

@@ -9,7 +9,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 import type { Database } from '../database.types';
-import { SEEDED_APPROVED_PLACE } from '../fixtures';
+import { SEED_PHOTO_PATHS } from '../fixtures';
 import { PHOTO_BUCKET, placePhotoUrl } from '../places';
 import { supabase } from '../supabase';
 
@@ -31,23 +31,23 @@ describe(`${PHOTO_BUCKET} bucket`, () => {
     // Deliberately a bare `fetch` rather than a Supabase client: this is exactly
     // what `expo-image` does with the URL the detail screen hands it, headers
     // and all — which here is none.
-    const response = await fetch(placePhotoUrl(SEEDED_APPROVED_PLACE.photo_paths[0]));
+    const response = await fetch(placePhotoUrl(SEED_PHOTO_PATHS[0]));
 
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toBe('image/jpeg');
   });
 
-  it('has a photo behind every path the seeded place advertises', async () => {
-    // A path in the column with no object behind it is a broken image on the
-    // detail screen, and nothing else in the stack would catch it.
+  it('has an object behind every seed photo path', async () => {
+    // A seed path with no object behind it is a broken image wherever it is
+    // pointed at, and nothing else in the stack would catch it.
     const statuses = await Promise.all(
-      SEEDED_APPROVED_PLACE.photo_paths.map(async (path) => {
+      SEED_PHOTO_PATHS.map(async (path) => {
         const response = await fetch(placePhotoUrl(path), { method: 'HEAD' });
         return response.status;
       })
     );
 
-    expect(statuses).toEqual(SEEDED_APPROVED_PLACE.photo_paths.map(() => 200));
+    expect(statuses).toEqual(SEED_PHOTO_PATHS.map(() => 200));
   });
 
   it('denies anonymous uploads', async () => {
