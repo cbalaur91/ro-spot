@@ -24,6 +24,12 @@ export default function TabsLayout() {
     // sits above both of them rather than inside either.
     <CategoryFilterProvider>
       <Tabs
+        // Every visited tab stays attached to the window, hidden with
+        // `display: none`. react-native-maps' Android MapView parks its markers
+        // when it's detached and puts all of them back on reattach, ignoring the
+        // ones React removed meanwhile — so a chip changed on the List left the
+        // Map's dropped places standing as default red pins.
+        detachInactiveScreens={false}
         screenOptions={{
           headerShown: false,
           tabBarActiveTintColor: colors.cherry,
