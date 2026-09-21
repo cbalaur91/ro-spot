@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Pressable, SectionList, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { CategoryChips } from '@/components/CategoryChips';
+import { CategoryChips, ClearFilters } from '@/components/CategoryChips';
 import { PlaceRow } from '@/components/PlaceRow';
 import { Loading, LoadFailed, ScreenNotice } from '@/components/ScreenState';
 import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
@@ -42,11 +42,39 @@ function Masthead({ showOriginNote }: { showOriginNote: boolean }) {
  * signature, and a signature that stopped at the gutter would read as a rule
  * instead.
  */
-function FilterBar() {
+function FilterBar({ count }: { count?: number }) {
+  const { t } = useTranslation();
+  const { selected, clear } = useCategoryFilter();
+  const isFiltered = selected.size > 0;
+
   return (
     <View className="bg-surface">
       <StarBand height={14} />
       <CategoryChips />
+      {/* What the chips left, and the way to lift them. Pulled up into the
+          chips' own bottom padding, so the row reads as theirs; 44 tall whether
+          or not Clear is in it, so turning the first chip on doesn't push the
+          list down under the finger. It wraps rather than truncates when the
+          text is enlarged. No count until the places have arrived: "0 places"
+          while they load would be a claim we can't yet make. */}
+      {count !== undefined || isFiltered ? (
+        <View className="-mt-3 min-h-[44px] flex-row flex-wrap content-center items-center justify-between gap-x-4 px-6">
+          {count !== undefined ? (
+            // The count alone is live: announcing the row would read Clear out
+            // on every refilter.
+            <Text
+              accessibilityLiveRegion="polite"
+              className="shrink text-[12px] text-muted"
+              style={{ fontVariant: ['tabular-nums'] }}
+            >
+              {t('list.count', { count })}
+            </Text>
+          ) : (
+            <View />
+          )}
+          {isFiltered ? <ClearFilters onPress={clear} /> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -93,7 +121,7 @@ function EmptyInvitation() {
 export default function ListScreen() {
   const { t } = useTranslation();
   const router = useRouter();
-  const { selected } = useCategoryFilter();
+  const { selected, clear } = useCategoryFilter();
   const {
     places,
     isResolved,
@@ -155,7 +183,7 @@ export default function ListScreen() {
           </View>
         }
         onScroll={(event) => (offset.current = event.nativeEvent.contentOffset.y)}
-        renderSectionHeader={() => <FilterBar />}
+        renderSectionHeader={() => <FilterBar count={places.length} />}
         // Android's default is off.
         stickySectionHeadersEnabled
         renderItem={({ item }) => (
@@ -174,8 +202,17 @@ export default function ListScreen() {
           places.length > 0 ? null : selected.size > 0 ? (
             // An empty list means two different things, and telling the user
             // which one saves them wondering where their places went.
+            // This one comes with the way out, as the Map's does: the pinned
+            // row's Clear is small and up by the chips, and the eye is here.
             <ScreenNotice>
               <Text className="text-[15px] text-ink">{t('filters.noMatch')}</Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={clear}
+                className="mt-1 rounded-full border-[1.5px] border-cherry px-6 py-[11px] active:opacity-70"
+              >
+                <Text className="text-[14px] font-semibold text-cherry">{t('filters.clear')}</Text>
+              </Pressable>
             </ScreenNotice>
           ) : (
             <EmptyInvitation />

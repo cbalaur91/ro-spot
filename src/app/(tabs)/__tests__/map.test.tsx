@@ -378,6 +378,41 @@ describe('Map tab', () => {
 
     expect(await screen.findByText('No places on the map yet.')).toBeTruthy();
     expect(screen.queryByText('No places match these filters.')).toBeNull();
+    // Nothing is filtered, so there is nothing to clear.
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
+  });
+
+  it('clears a filter that emptied the map in one tap', async () => {
+    await renderScreen(<MapScreen />);
+    await screen.findAllByTestId('marker');
+    await userEvent.press(screen.getByRole('button', { name: 'Services' }));
+
+    await userEvent.press(screen.getByRole('button', { name: 'Clear filters' }));
+
+    expect(screen.getAllByTestId('marker')).toHaveLength(2);
+    expect(screen.queryByText('No places match these filters.')).toBeNull();
+    expect(screen.getByRole('button', { name: 'Services' })).not.toBeSelected();
+  });
+
+  it('offers the clear in Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    await renderScreen(<MapScreen />);
+    await screen.findAllByTestId('marker');
+    await userEvent.press(screen.getByRole('button', { name: 'Servicii' }));
+
+    expect(screen.getByRole('button', { name: 'Șterge filtrele' })).toBeTruthy();
+  });
+
+  it('keeps the header free of a count, filtered or not', async () => {
+    await renderScreen(<MapScreen />);
+    await screen.findAllByTestId('marker');
+    expect(screen.queryByText(/\d+ places?$/)).toBeNull();
+
+    await userEvent.press(screen.getByRole('button', { name: 'Historic' }));
+
+    expect(screen.queryByText(/\d+ places?$/)).toBeNull();
+    // A chip on is no reason for a clear while the map still has pins on it.
+    expect(screen.queryByRole('button', { name: 'Clear filters' })).toBeNull();
   });
 
   it('offers a retry when the places never arrive', async () => {

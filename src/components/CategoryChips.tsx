@@ -85,3 +85,23 @@ export function CategoryChips() {
     </ScrollView>
   );
 }
+
+/**
+ * Every chip off in one tap, for a filter that has emptied the screen or that
+ * the user is done with. Bare cherry text rather than a chip: it is not a
+ * filter, and a pill beside the chips would read as a fourth one. The height is
+ * the 44 a thumb needs; the label is what a screen reader hears.
+ */
+export function ClearFilters({ onPress }: { onPress: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      onPress={onPress}
+      className="min-h-[44px] justify-center active:opacity-60"
+    >
+      <Text className="text-[13px] font-semibold text-cherry">{t('filters.clear')}</Text>
+    </Pressable>
+  );
+}
