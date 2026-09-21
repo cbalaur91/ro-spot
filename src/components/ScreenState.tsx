@@ -45,3 +45,33 @@ export function LoadFailed({ label, onRetry }: { label: string; onRetry: () => v
     </ScreenNotice>
   );
 }
+
+/**
+ * Asking again for something smaller than a screen — a photograph, or all of
+ * them. The secondary pill rather than `LoadFailed`'s filled one: the screen
+ * around it loaded, and its one filled pill is already Directions.
+ *
+ * The label wraps rather than truncates, so the pill grows with enlarged text.
+ */
+export function RetryPill({
+  onPress,
+  accessibilityLabel,
+}: {
+  onPress: () => void;
+  accessibilityLabel?: string;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      onPress={onPress}
+      className="min-h-[44px] items-center justify-center rounded-full border-[1.5px] border-cherry px-5 py-[11px] active:opacity-70"
+    >
+      <Text className="text-center text-[14px] font-semibold text-cherry">
+        {t('actions.retry')}
+      </Text>
+    </Pressable>
+  );
+}

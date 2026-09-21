@@ -1275,3 +1275,24 @@ changed on the List while the Map is in the background leaves the removed places
 red Google pins on the Map — reproduced on `main`'s code; needs its own issue. **Decided:** no
 count over the true empty (the hora already says so); the List's filtered empty has two Clears
 (row + notice pill). **Not verified:** iOS (no live regions there; the count isn't announced).
+
+## Issue #32 — Compact no-photos header and photo failure recovery on place details
+
+Seams: the place detail screen suite (`src/app/place/__tests__/[id].test.tsx`) drives the
+gallery through `expo-image`'s `onError`; the migration is proven by `places.rls.test.ts`
+and `photos.storage.test.ts` against the live row.
+
+- [ ] A. Before screenshots on the emulator (cathedral with photos; a no-photos place) →
+      verify: shots captured
+- [ ] B. Tests first: compact header for no photos (Back in flow, no floating chip), a
+      failed page shows "Photo unavailable" + Retry and keeps its page, retry remounts it,
+      all failed → compact header with failure copy + Retry that retries all, gallery
+      position + failures reset on a new path sequence; EN + RO → verify: fail on main's code
+- [ ] C. Migration emptying the cathedral's placeholder paths (guarded on id + exact array);
+      fixture + integration tests follow the row → verify: `supabase db push`, integration green
+- [ ] D. Implement: `PhotoGallery` failure pages + `onAllFailed`, compact header, Back chip
+      floating only over a hero, key the body on place + paths → verify: suite green, typecheck
+- [ ] E. DESIGN.md §3/§4.4/§2 rhomb table + §5 → verify: read against code
+- [ ] F. Gates: typecheck, lint, `npm test`, android export → verify: all green
+- [ ] G. Emulator pass EN/RO/font 1.3+2.0 → verify: after screenshots
+- [ ] H. `/code-review`, fix, commit, PR with screenshots

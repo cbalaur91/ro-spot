@@ -143,7 +143,7 @@ own ground and needs neither. The other thing a border can be is the whole rhomb
 | Size | Tint | Where |
 |---|---|---|
 | `6` | `surface` | The dot inside a selected chip. |
-| `10` | `transparent`, 1px `line` border | The List card's no-photo tile (§3, Thumbnail). An outline, because there is nothing there. |
+| `10` | `transparent`, 1px `line` border | The List card's no-photo tile (§3, Thumbnail); the detail screen's compact header and its failed photo page (§4.4). An outline, because there is nothing there. |
 | `10` | `line` | The detail screen's not-found notice. |
 | `11` | `cherry` | The Map header's accent; the web map stand-in. |
 | `17` (13px core) | category | The map pin, unselected — 2px `surface` ring, shadow `0px 1px 3px rgba(0,0,0,0.3)`. Bare, the web stand-in for the Add pin. |
@@ -158,11 +158,10 @@ shape, and undoing it belongs to the content.
 Native is border-box. A canvas rhomb stated as 13px with a 2px border is 17px of view. Add
 the border twice when porting a size.
 
-The photo gallery's page marks and its no-photos box are rhombs that are *not* `Diamond` —
-they were drawn by hand before anything else needed an outline. The List's no-photo tile is
-the second outline-only rhomb, and it is `Diamond` with a `transparent` tint and a `border`,
-which turned out to need no new variant. The gallery's move over when that file is next
-touched. The place card's 9px tint bullet is gone: a thumbnail stands where it stood.
+The photo gallery's page marks are the last rhombs that are *not* `Diamond` — they were
+drawn by hand before anything else needed an outline, and the tests find the current page
+by their `testID`s. Every outline-only rhomb is `Diamond` with a `transparent` tint and a
+`border`, which turned out to need no new variant. The place card's 9px tint bullet is gone: a thumbnail stands where it stood.
 
 ---
 
@@ -355,6 +354,10 @@ for the same reason should not look like two different problems.
 - `Loading` — `ActivityIndicator` in cherry over `text-[13px] text-muted`
 - `LoadFailed` — `cloud-offline-outline` 28 in muted, `text-[15px] text-ink`, then a primary
   pill reading `actions.retry`
+- `RetryPill` — the secondary pill reading `actions.retry`, at `min-h-[44px] px-5`, its label
+  free to wrap. For asking again for something smaller than a screen — a photograph, or all
+  of a place's photographs — where the screen around it loaded and already has its filled
+  pill. Label it when the word alone doesn't say what is retried (`detail.retryPhoto`).
 
 ### Measures
 
@@ -557,10 +560,26 @@ because they are the way out of the over-filtered one.
 
 Full-bleed photo hero, hard against the top of the screen: the photographs lead, and the
 chrome that would frame them floats over them. The back chip is a 32px `surface` circle,
-`0px 1px 4px {ink}26`, `chevron-back` 20 in ink, held clear of the status bar by a top-edge
+`0px 1px 4px {ink}26`, `chevron-back` 20 in ink, with 6px of padding around it for the 44
+target. Over a hero it **floats**: absolute, held clear of the status bar by a top-edge
 `SafeAreaView` (not `useSafeAreaInsets`, which needs a provider this pushed screen shouldn't
-depend on), with 6px of padding around it for the 44 target. It renders **last**, so it
-paints over the photographs.
+depend on), rendered after the scroll view so it paints over the photographs. It floats
+**only over a real photograph** — everywhere else (the compact header below; loading, error
+and not-found) it is the first thing in the flow, at `pl-2`, so at enlarged text nothing
+runs under it.
+
+**The compact header** stands where the hero would when there is no photograph to show — a
+place nobody has photographed yet, or one whose every photograph failed. A 4:3 box of
+nothing was a third of the screen that read as "still loading". Recipe: full-bleed `bg-card`
+from the very top edge, closed by `border-b border-line`; inside a top-edge `SafeAreaView`,
+the back chip in flow, then a message row — `min-h-[96px] justify-center py-4` at the 22
+measure, a 10px outline rhomb (`Diamond`, `transparent`, `line` border) beside a column
+holding the message `text-[13px] leading-[18px] text-muted`, wrapping. The rhomb sits in a
+box one text line tall (`18 × fontScale`), so it marks the message's first line rather than
+the middle of the message and its Retry. No photos says `detail.noPhotos` and offers
+nothing; every photo failed says `detail.photosFailed` with a `RetryPill` under the message,
+in the column, so it has the column's width to wrap in. That Retry asks for every photograph
+again.
 
 Body at the 22 measure: 11px eyebrow, name `text-[23px] leading-[29px] font-semibold`,
 address line, the actions at `mt-4`, a 10px star band divider at `my-4`, then the
@@ -598,9 +617,20 @@ measurement. No fallback-origin caveat here; the List says it once over a whole 
 numbers, and this screen has one.
 
 Photos: one per page at the full width of the screen, snapped by `snapToInterval`, faded in
-over a `line` box. Page marks are centred 6px rhombs — ink for the page you're on, a `line`
-outline otherwise — and only appear past one photo. No photos at all gets a bordered box at
-4:3 with a small outlined rhomb and `detail.noPhotos`.
+over a `line` box — that grey box is **loading**. Page marks are centred 6px rhombs — ink for
+the page you're on, a `line` outline otherwise — and only appear past one photo.
+
+A photograph that fails keeps its page: the same width and 4:3, the page marks still count
+it, and you stay on it. The page turns `bg-card` — white, so "not coming" never looks like
+the grey of "still coming" — with a centred 10px outline rhomb, `detail.photoUnavailable` in
+`text-[13px] text-muted`, and a `RetryPill` labelled `detail.retryPhoto` ("Try photo 2
+again": a screen reader walks every failed page). Retrying draws the page as a photograph
+again, which mounts a fresh image and asks for it anew. When **every** page has failed the
+gallery gives way to the compact header above.
+
+Which pages failed lives on the screen, not in the gallery, because all-failed changes what
+stands at the top. The body is keyed by the place's id and its photo paths, so another place
+— or this one after an edit — starts from the first page with nothing marked failed.
 
 A place that isn't there gets a 10px `line` rhomb, `detail.notFound` and
 `detail.notFoundHint` — a pending place and a deleted one look the same from out here, and
@@ -900,6 +930,10 @@ Deliberate, and not to be "fixed" back:
   nobody is obliged to finish must have a way out that isn't the OS back gesture. It is a
   plain `chevron-back` on the app's paper rather than the detail screen's floating circle —
   that circle exists to survive a photograph behind it.
+- **Place detail has a compact header the canvas doesn't draw.** The canvas only shows the
+  detail screen with a photograph. A place with none — or with none that load — gets the
+  compact header of §4.4 instead of a 4:3 empty box, and the back chip sits in its flow
+  rather than floating: the floating circle exists to survive a photograph behind it.
 - **The bird is 96 × 72, not the canvas's 96 × 73.** The grid is 16 × 12, so the height
   follows the width at the motif's own 4:3. A bird stretched to a box is a bird with a
   broken wing.
