@@ -1,12 +1,15 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useEffectEvent, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, View, type LayoutChangeEvent } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { CategoryChips, ClearFilters } from '@/components/CategoryChips';
 import { PlacesMap } from '@/components/PlacesMap';
-import { milesLabel } from '@/geo';
+import type { PlacesMapHandle } from '@/components/PlacesMap.types';
+import { closestFraming } from '@/framing';
+import { DEFAULT_REGION, milesLabel, nearbyRegion } from '@/geo';
 import { useVisiblePlaces, type PlaceWithDistance } from '@/hooks/useVisiblePlaces';
 import { StarBand } from '@/motifs/Band';
 import { Diamond } from '@/motifs/Diamond';
@@ -45,6 +48,12 @@ const FOOT_GAP = 12;
 // on both platforms now, and the canvas states the shadow that way — ink at 12%,
 // the palette's own colour rather than a second black.
 const CARD_SHADOW = { boxShadow: `0px 4px 14px ${colors.ink}1F` };
+
+/** How much of the map's foot a view covers, gap included; nothing when it's empty. */
+const measure =
+  (set: (inset: number) => void) =>
+  ({ nativeEvent }: LayoutChangeEvent) =>
+    set(nativeEvent.layout.height > 0 ? nativeEvent.layout.height + FOOT_GAP : 0);
 
 /**
  * The foot of the map, where everything the map can't say itself is said: the
@@ -94,6 +103,98 @@ function MapCard({
     >
       {body}
     </Pressable>
+  );
+}
+
+type IconName = React.ComponentProps<typeof Ionicons>['name'];
+
+/**
+ * One of the map's own controls: a surface pill that stands on the tiles the way
+ * the card does. The icon is muted and the word is ink — the controls are the
+ * map's furniture, and cherry is kept for the things that are the app's.
+ */
+function MapControl({
+  icon,
+  text,
+  label,
+  onPress,
+  disabled = false,
+}: {
+  /** No icon means a spinner: the control is waiting on something. */
+  icon?: IconName;
+  text: string;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled, busy: !icon }}
+      disabled={disabled}
+      onPress={onPress}
+      className="min-h-[44px] max-w-full flex-row items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 active:opacity-80"
+      style={CARD_SHADOW}
+    >
+      {icon ? (
+        <Ionicons name={icon} size={16} color={colors.muted} />
+      ) : (
+        <ActivityIndicator size="small" color={colors.muted} />
+      )}
+      <Text className="shrink text-[13px] font-semibold leading-[17px] text-ink">{text}</Text>
+    </Pressable>
+  );
+}
+
+/**
+ * The way back to what's close, standing over the map's right edge above the
+ * card: Closest places, then where the user is. Right-aligned so the Google logo
+ * at the card's left shoulder stays in sight.
+ *
+ * The location control says what it will actually show. Without a fix it is
+ * "Detroit", the map's fallback, because a button reading "My location" that
+ * flew to downtown Detroit would be telling somebody in Ohio where they are.
+ */
+function MapControls({
+  locate,
+  onLocate,
+  onClosest,
+}: {
+  locate: 'pending' | 'device' | 'fallback';
+  onLocate: () => void;
+  /** Absent when there is nothing to frame. */
+  onClosest?: () => void;
+}) {
+  const { t } = useTranslation();
+
+  return (
+    <View pointerEvents="box-none" className="mb-2.5 items-end gap-2">
+      {onClosest ? (
+        <MapControl
+          icon="scan-outline"
+          text={t('map.closest')}
+          label={t('map.closestLabel')}
+          onPress={onClosest}
+        />
+      ) : null}
+      {locate === 'fallback' ? (
+        <MapControl
+          icon="business-outline"
+          text={t('map.detroit')}
+          label={t('map.detroitLabel')}
+          onPress={onLocate}
+        />
+      ) : (
+        <MapControl
+          icon={locate === 'device' ? 'locate-outline' : undefined}
+          text={t('map.locate')}
+          label={t(locate === 'device' ? 'map.locateLabel' : 'map.locating')}
+          onPress={onLocate}
+          disabled={locate === 'pending'}
+        />
+      )}
+    </View>
   );
 }
 
@@ -152,7 +253,7 @@ function SelectedPlace({ place }: { place: PlaceWithDistance }) {
 export default function MapScreen() {
   const { t } = useTranslation();
   const { selected } = useCategoryFilter();
-  const { places, origin, isUserLocation, isPending, isError, refetch } =
+  const { places, origin, isResolved, isUserLocation, isPending, isError, refetch } =
     useVisiblePlaces();
   // The pin the user picked, if they have. Until then the card follows the
   // nearest place, so a location fix that re-sorts the list moves it too; after
@@ -167,8 +268,58 @@ export default function MapScreen() {
   const shown = picked ?? places[0];
   // How much of the map's foot the card covers, so the map can keep its own
   // furniture — the Google logo, which the terms say must stay visible — clear
-  // of it.
+  // of it; and how much the whole foot covers, controls and all, which is what
+  // a fit has to clear.
   const [footInset, setFootInset] = useState(0);
+  const [fitInset, setFitInset] = useState(0);
+
+  const map = useRef<PlacesMapHandle>(null);
+  const [isMapReady, setMapReady] = useState(false);
+  // The opening frame is owed until it runs — or until the user does anything to
+  // the map first, after which a late location fix doesn't get to take the map
+  // off them.
+  const openingOwed = useRef(true);
+  const takeOver = () => {
+    openingOwed.current = false;
+  };
+
+  // The nearest five, the user beside them when they're close. The selection
+  // stays if it's in the frame; otherwise the card follows the nearest again.
+  const frameClosest = () => {
+    const framing = closestFraming(places, origin, isUserLocation);
+    if (!framing) return;
+
+    if ('fit' in framing.camera) map.current?.fit(framing.camera.fit);
+    else map.current?.show(framing.camera.region);
+    if (pickedId !== undefined && !framing.ids.includes(pickedId)) setPickedId(undefined);
+  };
+
+  // Opened on what's close, once the map, the places and the location answer are
+  // all in — never on an interim guess that the fix then yanks away. The places
+  // count as in once the card they bring has been measured: the card and the
+  // controls arrive in the same render as the rows, and a fit made before their
+  // layout would clear a foot of nothing and leave pins under the card.
+  const isDataReady = !isPending && !isError && footInset > 0;
+  const frameOpening = useEffectEvent(() => {
+    if (!openingOwed.current) return;
+    openingOwed.current = false;
+    frameClosest();
+  });
+  useEffect(() => {
+    if (isMapReady && isDataReady && isResolved) frameOpening();
+  }, [isMapReady, isDataReady, isResolved]);
+
+  // A chip is a new question, so it gets the same answer the opening did. Before
+  // the opening has run, the opening frames the filtered set itself.
+  const lastFilter = useRef(selected);
+  const frameFilter = useEffectEvent(() => {
+    if (!openingOwed.current) frameClosest();
+  });
+  useEffect(() => {
+    if (lastFilter.current === selected) return;
+    lastFilter.current = selected;
+    frameFilter();
+  }, [selected]);
 
   return (
     <SafeAreaView edges={['top']} className="flex-1 bg-surface">
@@ -176,58 +327,84 @@ export default function MapScreen() {
 
       <View className="flex-1">
         <PlacesMap
+          ref={map}
           places={places}
-          origin={origin}
           isUserLocation={isUserLocation}
           footInset={footInset}
+          fitInset={fitInset}
           selectedId={shown?.id}
-          onSelect={setPickedId}
+          onSelect={(id) => {
+            takeOver();
+            setPickedId(id);
+          }}
+          onReady={() => setMapReady(true)}
+          onGesture={takeOver}
         />
 
-        {/* One foot to the map, and three things that might stand in it: the
-            places that never arrived, the map's own emptiness, or — when there
-            is anything to show at all — the selected place. */}
         <View
+          testID="map-foot"
           pointerEvents="box-none"
           className="absolute left-[14px] right-[14px]"
           style={{ bottom: FOOT_GAP }}
-          onLayout={(event) => {
-            const { height } = event.nativeEvent.layout;
-            setFootInset(height > 0 ? height + FOOT_GAP : 0);
-          }}
+          onLayout={measure(setFitInset)}
         >
-          {isError ? (
-            <MapCard>
-              <View className="flex-row items-center justify-between gap-4">
-                <Text className="flex-1 text-[13px] text-ink">{t('map.error')}</Text>
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={refetch}
-                  className="active:opacity-70"
-                >
-                  <Text className="text-[13px] font-semibold text-cherry">
-                    {t('actions.retry')}
-                  </Text>
-                </Pressable>
-              </View>
-            </MapCard>
-          ) : shown ? (
-            <SelectedPlace place={shown} />
-          ) : isPending ? null : (
-            <MapCard>
-              {/* An empty map means two different things, and blaming the chips for
-                  an empty dataset would send the user hunting for a filter to undo.
-                  The one the chips caused comes with the way out of it. */}
-              {selected.size > 0 ? (
-                <View className="flex-row flex-wrap items-center justify-between gap-x-4">
-                  <Text className="shrink text-[13px] text-muted">{t('filters.noMatch')}</Text>
-                  <ClearFilters />
+          <MapControls
+            locate={!isResolved ? 'pending' : isUserLocation ? 'device' : 'fallback'}
+            onLocate={() => {
+              takeOver();
+              map.current?.show(isUserLocation ? nearbyRegion(origin) : DEFAULT_REGION);
+            }}
+            onClosest={
+              places.length > 0
+                ? () => {
+                    takeOver();
+                    frameClosest();
+                  }
+                : undefined
+            }
+          />
+
+          {/* One card, and three things that might stand in it: the places
+              that never arrived, the map's own emptiness, or — when there is
+              anything to show at all — the selected place. */}
+          <View
+            testID="map-card"
+            pointerEvents="box-none"
+            onLayout={measure(setFootInset)}
+          >
+            {isError ? (
+              <MapCard>
+                <View className="flex-row items-center justify-between gap-4">
+                  <Text className="flex-1 text-[13px] text-ink">{t('map.error')}</Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={refetch}
+                    className="active:opacity-70"
+                  >
+                    <Text className="text-[13px] font-semibold text-cherry">
+                      {t('actions.retry')}
+                    </Text>
+                  </Pressable>
                 </View>
-              ) : (
-                <Text className="text-[13px] text-muted">{t('map.empty')}</Text>
-              )}
-            </MapCard>
-          )}
+              </MapCard>
+            ) : shown ? (
+              <SelectedPlace place={shown} />
+            ) : isPending ? null : (
+              <MapCard>
+                {/* An empty map means two different things, and blaming the chips
+                    for an empty dataset would send the user hunting for a filter to
+                    undo. The one the chips caused comes with the way out of it. */}
+                {selected.size > 0 ? (
+                  <View className="flex-row flex-wrap items-center justify-between gap-x-4">
+                    <Text className="shrink text-[13px] text-muted">{t('filters.noMatch')}</Text>
+                    <ClearFilters />
+                  </View>
+                ) : (
+                  <Text className="text-[13px] text-muted">{t('map.empty')}</Text>
+                )}
+              </MapCard>
+            )}
+          </View>
         </View>
       </View>
     </SafeAreaView>

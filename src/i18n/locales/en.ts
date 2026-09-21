@@ -47,6 +47,16 @@ export default {
     // that says so itself.
     card: '{{name}}, {{category}}, {{address}}',
     cardHint: 'Opens place details',
+    // The map's controls: a short word on the pill, a whole sentence for a
+    // screen reader. Without a location fix the control is Detroit's, never
+    // "my location" — it shows the fallback, not where anybody is.
+    closest: 'Closest places',
+    closestLabel: 'Show the closest places on the map',
+    locate: 'My location',
+    locateLabel: 'Show my location on the map',
+    locating: 'Finding your location',
+    detroit: 'Detroit',
+    detroitLabel: 'Show Metro Detroit on the map',
   },
   list: {
     subtitle: 'Romanian places across the US',
