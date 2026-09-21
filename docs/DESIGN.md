@@ -435,8 +435,9 @@ paints over the photographs.
 
 Body at the 22 measure: 11px eyebrow, name `text-[23px] leading-[29px] font-semibold`,
 address line, the actions at `mt-4`, a 10px star band divider at `my-4`, then the
-description as written by whoever submitted it. Contact rows follow — label over value, icon at the right, separated
-by a **top** hairline so the first row's rule doubles as the line under the description.
+description as written by whoever submitted it. Contact rows follow — label over value,
+icon at the right, separated by a **top** hairline so the first row's rule doubles as the
+line under the description.
 
 **The actions** sit straight under the address: most visits to a place end in going there
 or ringing them. **Directions** is a primary pill with `navigate-outline`, to the pin's

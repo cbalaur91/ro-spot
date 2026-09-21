@@ -196,7 +196,9 @@ function PillFace({ action }: { action: PlaceAction }) {
 function PlaceActions({ place }: { place: Place }) {
   const { t } = useTranslation();
   const [width, setWidth] = useState(0);
-  const [natural, setNatural] = useState<Partial<Record<PlaceAction['key'], number>>>({});
+  const [naturalWidths, setNaturalWidths] = useState<
+    Partial<Record<PlaceAction['key'], number>>
+  >({});
 
   // Un-dialable is the same as absent, as on the List card.
   const callUrl = place.phone ? telUrl(place.phone) : null;
@@ -223,9 +225,12 @@ function PlaceActions({ place }: { place: Place }) {
       : []),
   ];
   const paired = actions.length > 1;
-  const half = (width - ACTION_GAP) / 2;
+  // A point short of half: a label measured at exactly the half can still wrap
+  // once the pill's edges are rounded to pixels.
+  const room = (width - ACTION_GAP) / 2 - 1;
   // Side by side until there is a width to compare with: zero wide, nothing fits.
-  const stacked = paired && width > 0 && actions.some(({ key }) => (natural[key] ?? 0) > half);
+  const stacked =
+    paired && width > 0 && actions.some(({ key }) => (naturalWidths[key] ?? 0) > room);
 
   const open = (url: string) => {
     Linking.openURL(url).catch(() => Alert.alert(t('detail.linkFailed')));
@@ -247,7 +252,7 @@ function PlaceActions({ place }: { place: Place }) {
               importantForAccessibility="no-hide-descendants"
               onLayout={(e) => {
                 const measured = e.nativeEvent.layout.width;
-                setNatural((prev) => ({ ...prev, [action.key]: measured }));
+                setNaturalWidths((prev) => ({ ...prev, [action.key]: measured }));
               }}
               className={`${PILL} ${PILL_VARIANT[action.variant]} absolute left-0 top-0`}
               style={{ opacity: 0 }}
