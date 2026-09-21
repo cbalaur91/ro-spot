@@ -898,6 +898,20 @@ describe('Map framing and controls', () => {
     });
   });
 
+  it('holds the map padding until the map is ready, then pads for the card', async () => {
+    // Between its first layout and its SDK loading, the native map has no
+    // Google map to pad, and a padding change then crashes it (#44).
+    mockMapReadsReady = false;
+    await renderScreen(<MapScreen />);
+    await settle();
+
+    expect(screen.getByTestId('map').props.mapPadding.bottom).toBe(0);
+
+    await act(async () => screen.getByTestId('map').props.onMapReady());
+
+    expect(screen.getByTestId('map').props.mapPadding.bottom).toBe(112);
+  });
+
   it('pads the map for the card alone, and fits clear of the controls too', async () => {
     await renderScreen(<MapScreen />);
     await settle();
