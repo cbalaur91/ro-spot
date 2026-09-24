@@ -20,12 +20,12 @@ Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being check
 ## Phase 3 — Contribute (auth)
 - [ ] 10. Auth flows: email/password ✅ (#5); Google native + Apple flag deferred 2026-09-19 (#6, needs phone + OAuth client) → verify: sign up/in/out on Android device; session persists across restarts
 - [x] 11. Submission form (#7, device pass owed): fields → geocode → draggable pin → photo pick + compress (≤5, ~1600px) → upload → insert pending → verify: place appears `pending` in dashboard, invisible in app; flipping to `approved` makes it appear
-- [ ] 12. Own-place edit → back to pending; duplicate-proximity flag on insert → verify: edited place disappears from public view until re-approved
-- [ ] 13. Profile screen: my places (with status), language toggle, sign out, delete account → verify: deletion via a throwaway account
+- [x] 12. Own-place edit → back to pending; duplicate-proximity flag on insert → verify: edited place disappears from public view until re-approved (#8)
+- [x] 13. Profile screen: my places (with status), language toggle, sign out, delete account → verify: deletion via a throwaway account (#8, #10, #13)
 
 ## Phase 4 — Ship-readiness
-- [ ] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard
-- [ ] 15. i18n completeness pass (all UI strings RO+EN) → verify: no hardcoded strings on any screen in either locale
+- [x] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard → verified: `JAVASCRIPT-REACT-1` (#12, PR #49)
+- [x] 15. i18n completeness pass (all UI strings RO+EN) → verified: audit + Profile language toggle, emulator pass in both locales (#13, PR #48)
 - [ ] 16. Privacy policy page (hosted) + linked in app → verify: URL loads from the app
 - [x] 17. Seed Metro Detroit places (owner provides 10–20; script inserts as approved) → verified: pins render on Detroit map (#11, 6 places by owner's call)
 
@@ -1445,3 +1445,51 @@ the `_few` plurals). What was missing was the toggle, and a few strings built in
 Left for later (flagged in the PR): iOS permission prompts in `app.config.ts` are
 English-only (needs `locales` in the Expo config; unverifiable without an iOS build); the
 sign-in submit has no accessible name while busy; map markers are unlabelled.
+
+## Review 2026-09-23
+Shipped #13 (PR #48, squash-merged): Profile language toggle (signed-in + anonymous), persisted
+choice restored behind the splash, device-locale default, `browse.error`, `list.card`, iOS tab
+labels. Left: iOS permission-prompt localisation (needs an iOS build), sign-in busy button and
+map markers unlabelled. Next unblocked work: none ready-for-agent — #12 waits on #6 (owner).
+
+## Issue #12 — Sentry crash reporting and privacy policy
+
+Owner decisions 2026-09-23: Sentry free tier, owner creates the project and puts the DSN in
+`.env` (`EXPO_PUBLIC_SENTRY_DSN`). No domain and no contact email yet, so the policy is
+drafted in `~/projects/rospot-landing` with marked placeholders, and the Profile link reads
+`EXPO_PUBLIC_PRIVACY_URL` and stays hidden while it is empty. The "blocked by #6" label is
+stale for the Sentry half: the emulator runs a local debug APK, which is a dev build.
+
+- [x] A. `@sentry/react-native` (expo install), config plugin, `getSentryExpoConfig` in Metro
+      → verify: typecheck, `npx expo-doctor`, Android export bundles
+- [x] B. `src/crashReporting.ts` — `startCrashReporting()` inits only with a DSN, no PII, TDD
+      → verify: unit tests (no DSN = no init; DSN = init without default PII)
+- [x] C. Root layout starts it and wraps the root in `Sentry.wrap` → verify: layout suite green
+- [x] D. Profile "Privacy policy" link, both signed-in and anonymous, hidden without a URL,
+      RO+EN, TDD → verify: profile suite covers hidden / shown / opens the URL
+- [x] E. Policy page `rospot-landing/privacy/index.html` (RO+EN), from what the app actually
+      collects; `[EMAIL]` / effective date marked → verify: served locally and opened from
+      the Profile link on the emulator
+- [x] F. Fresh debug APK, deliberate crash (temporary, uncommitted) → verified 2026-09-24:
+      `JAVASCRIPT-REACT-1` in Sentry (org `aiwebhub`, project `javascript-react`), environment
+      `development`. The first two crashes went to a project that had since been replaced —
+      the `.env` DSN was stale; `sentry api …/keys/` gave the live one
+      Sentry still derived a city from the connection with IP storage off (`user.geo`:
+      Detroit), against the policy. Owner chose to scrub it: project `relayPiiConfig` =
+      Remove Anything from `$user.geo.**`; `JAVASCRIPT-REACT-2` arrived with `user.geo: {}`
+- [x] G. `docs/DESIGN.md` §4.8 records the link; gates; `/code-review`; commit + PR
+      → verified: 586 tests, typecheck, lint, Android export; emulator: link drawn under the
+      language pill, opens `/privacy/?lang=en` in Chrome; crash thrown with `RNSentry:
+      Starting with DSN` in logcat
+
+Review fixes: the spec axis caught the policy promising less than Sentry's defaults send —
+sessions on every launch, and fetch breadcrumbs whose URLs carry account ids. Turned both off
+(tested) rather than widening the policy; password "hashed", email "never shown publicly",
+and the in-app change notice dropped (nothing in the app can do it).
+
+Owed on #12 (the PR does not close it):
+- Owner: domain + contact email → fill `[OPERATOR]` / `[EMAIL]` in
+  `rospot-landing/privacy/index.html`, deploy, set `EXPO_PUBLIC_PRIVACY_URL`.
+- Release builds upload source maps: set `SENTRY_ORG`, `SENTRY_PROJECT`,
+  `SENTRY_AUTH_TOKEN`, or `SENTRY_DISABLE_AUTO_UPLOAD=true`, or the build fails.
+- When Google/Apple sign-in ships (#6), the policy's account section must say so.

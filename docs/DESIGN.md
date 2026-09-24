@@ -884,6 +884,15 @@ speaks the device's first language it knows, English otherwise. At launch the ro
 holds the splash screen until `restoreLanguage` has read the choice back, so a phone set to
 one language never shows a frame of it to someone who chose the other.
 
+**Privacy policy** (#12), right under the language pill in both the signed-in and the
+anonymous page: a `link` reading `profile.privacy` in `text-[12.5px] text-muted`, a 12px
+Ionicons `open-outline` in `muted` after it (`gap-1`) because pressing it leaves the app,
+`self-start` with `py-[13px] pr-3` for the 44 target — quiet, like "Delete account": it is a
+store requirement, not a feature. The glyph is a font character, so the link carries its
+label outright. It opens `EXPO_PUBLIC_PRIVACY_URL` with `?lang=` set to the app's language,
+and is **not drawn at all** while the build has no URL — a link that can only fail is worse
+than none.
+
 #### 4.9 Edit your place — `src/app/edit/[id].tsx`
 
 The Add tab's form and pin step (§4.5), prefilled with a place the author already sent in and

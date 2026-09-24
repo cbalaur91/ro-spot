@@ -2,7 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
-import { AccessibilityInfo } from 'react-native';
+import { AccessibilityInfo, Linking } from 'react-native';
 
 import type { Place } from '@/data/places';
 import i18n, { LANGUAGE_KEY } from '@/i18n';
@@ -421,5 +421,63 @@ describe('Profile tab, language', () => {
     await userEvent.press(screen.getByRole('radio', { name: 'Română' }));
 
     expect(await screen.findByText('Ca să te uiți, nu ai nevoie de cont.')).toBeOnTheScreen();
+  });
+});
+
+describe('Profile tab, privacy policy', () => {
+  const POLICY = 'https://rospot.example/privacy/';
+  let openURL: jest.SpyInstance;
+
+  beforeEach(() => {
+    process.env.EXPO_PUBLIC_PRIVACY_URL = POLICY;
+    openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    delete process.env.EXPO_PUBLIC_PRIVACY_URL;
+    openURL.mockRestore();
+  });
+
+  it('opens the hosted policy from a signed-in page', async () => {
+    currentUser.mockResolvedValue(ana);
+
+    await renderScreen(<ProfileScreen />);
+
+    await userEvent.press(await screen.findByRole('link', { name: 'Privacy policy' }));
+    expect(openURL).toHaveBeenCalledWith(`${POLICY}?lang=en`);
+  });
+
+  it('is there for someone who never signs in', async () => {
+    currentUser.mockResolvedValue(null);
+
+    await renderScreen(<ProfileScreen />);
+
+    await userEvent.press(await screen.findByRole('link', { name: 'Privacy policy' }));
+    expect(openURL).toHaveBeenCalledWith(`${POLICY}?lang=en`);
+  });
+
+  it('is not offered until the build has somewhere to send it', async () => {
+    // A link that can only fail is worse than none: the policy is not
+    // published until it has a home.
+    delete process.env.EXPO_PUBLIC_PRIVACY_URL;
+    currentUser.mockResolvedValue(ana);
+
+    await renderScreen(<ProfileScreen />);
+
+    await waitFor(() => expect(screen.getByText('Language')).toBeOnTheScreen());
+    expect(screen.queryByRole('link', { name: 'Privacy policy' })).not.toBeOnTheScreen();
+  });
+
+  it('speaks Romanian', async () => {
+    await i18n.changeLanguage('ro');
+    currentUser.mockResolvedValue(null);
+
+    await renderScreen(<ProfileScreen />);
+
+    // And opens the Romanian page — the policy follows the app's language.
+    await userEvent.press(
+      await screen.findByRole('link', { name: 'Politica de confidențialitate' })
+    );
+    expect(openURL).toHaveBeenCalledWith(`${POLICY}?lang=ro`);
   });
 });

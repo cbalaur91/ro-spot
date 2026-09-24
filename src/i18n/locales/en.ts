@@ -164,6 +164,8 @@ export default {
     signOutFailed: 'Could not sign you out. Try again.',
     // Over the toggle; the two options are the languages' own names.
     language: 'Language',
+    // Opens the policy on the website.
+    privacy: 'Privacy policy',
     // Account deletion: a quiet link, then one explicit confirmation. The
     // confirm button names the act in full, and the other names what staying
     // keeps — "Cancel" would not say which of the two it cancels.
