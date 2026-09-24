@@ -1470,8 +1470,10 @@ stale for the Sentry half: the emulator runs a local debug APK, which is a dev b
 - [x] E. Policy page `rospot-landing/privacy/index.html` (RO+EN), from what the app actually
       collects; `[EMAIL]` / effective date marked → verify: served locally and opened from
       the Profile link on the emulator
-- [ ] F. Fresh debug APK, deliberate crash (temporary, uncommitted) → verify: the event shows
-      up in the owner's Sentry dashboard — crash thrown on the emulator; dashboard check owed
+- [x] F. Fresh debug APK, deliberate crash (temporary, uncommitted) → verified 2026-09-24:
+      `JAVASCRIPT-REACT-1` in Sentry (org `aiwebhub`, project `javascript-react`), environment
+      `development`. The first two crashes went to a project that had since been replaced —
+      the `.env` DSN was stale; `sentry api …/keys/` gave the live one
 - [x] G. `docs/DESIGN.md` §4.8 records the link; gates; `/code-review`; commit + PR
       → verified: 586 tests, typecheck, lint, Android export; emulator: link drawn under the
       language pill, opens `/privacy/?lang=en` in Chrome; crash thrown with `RNSentry:
@@ -1483,9 +1485,8 @@ sessions on every launch, and fetch breadcrumbs whose URLs carry account ids. Tu
 and the in-app change notice dropped (nothing in the app can do it).
 
 Owed on #12 (the PR does not close it):
-- Owner: confirm the test crash in the Sentry dashboard (environment `development`).
-- Owner: Sentry project → Settings → "Prevent Storing of IP Addresses" — the policy says
-  reports carry no location.
+- Sentry still derives a city from the connection (`user.geo`: Detroit) with IP storage
+  off — the policy says reports carry no location. Scrub it or disclose it.
 - Owner: domain + contact email → fill `[OPERATOR]` / `[EMAIL]` in
   `rospot-landing/privacy/index.html`, deploy, set `EXPO_PUBLIC_PRIVACY_URL`.
 - Release builds upload source maps: set `SENTRY_ORG`, `SENTRY_PROJECT`,
