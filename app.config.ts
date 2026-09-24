@@ -40,6 +40,10 @@ const config: ExpoConfig = {
   },
   plugins: [
     'expo-router',
+    // Native crash handling. A release build also uploads source maps, which
+    // needs SENTRY_ORG, SENTRY_PROJECT and SENTRY_AUTH_TOKEN in the environment;
+    // debug builds skip the upload.
+    '@sentry/react-native',
     'expo-localization',
     'expo-font',
     'expo-image',

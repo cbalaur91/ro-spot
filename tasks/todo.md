@@ -25,7 +25,7 @@ Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being check
 
 ## Phase 4 — Ship-readiness
 - [ ] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard
-- [ ] 15. i18n completeness pass (all UI strings RO+EN) → verify: no hardcoded strings on any screen in either locale
+- [x] 15. i18n completeness pass (all UI strings RO+EN) → verified: audit + Profile language toggle, emulator pass in both locales (#13, PR #48)
 - [ ] 16. Privacy policy page (hosted) + linked in app → verify: URL loads from the app
 - [x] 17. Seed Metro Detroit places (owner provides 10–20; script inserts as approved) → verified: pins render on Detroit map (#11, 6 places by owner's call)
 
@@ -1445,3 +1445,49 @@ the `_few` plurals). What was missing was the toggle, and a few strings built in
 Left for later (flagged in the PR): iOS permission prompts in `app.config.ts` are
 English-only (needs `locales` in the Expo config; unverifiable without an iOS build); the
 sign-in submit has no accessible name while busy; map markers are unlabelled.
+
+## Review 2026-09-23
+Shipped #13 (PR #48, squash-merged): Profile language toggle (signed-in + anonymous), persisted
+choice restored behind the splash, device-locale default, `browse.error`, `list.card`, iOS tab
+labels. Left: iOS permission-prompt localisation (needs an iOS build), sign-in busy button and
+map markers unlabelled. Next unblocked work: none ready-for-agent — #12 waits on #6 (owner).
+
+## Issue #12 — Sentry crash reporting and privacy policy
+
+Owner decisions 2026-09-23: Sentry free tier, owner creates the project and puts the DSN in
+`.env` (`EXPO_PUBLIC_SENTRY_DSN`). No domain and no contact email yet, so the policy is
+drafted in `~/projects/rospot-landing` with marked placeholders, and the Profile link reads
+`EXPO_PUBLIC_PRIVACY_URL` and stays hidden while it is empty. The "blocked by #6" label is
+stale for the Sentry half: the emulator runs a local debug APK, which is a dev build.
+
+- [x] A. `@sentry/react-native` (expo install), config plugin, `getSentryExpoConfig` in Metro
+      → verify: typecheck, `npx expo-doctor`, Android export bundles
+- [x] B. `src/crashReporting.ts` — `startCrashReporting()` inits only with a DSN, no PII, TDD
+      → verify: unit tests (no DSN = no init; DSN = init without default PII)
+- [x] C. Root layout starts it and wraps the root in `Sentry.wrap` → verify: layout suite green
+- [x] D. Profile "Privacy policy" link, both signed-in and anonymous, hidden without a URL,
+      RO+EN, TDD → verify: profile suite covers hidden / shown / opens the URL
+- [x] E. Policy page `rospot-landing/privacy/index.html` (RO+EN), from what the app actually
+      collects; `[EMAIL]` / effective date marked → verify: served locally and opened from
+      the Profile link on the emulator
+- [ ] F. Fresh debug APK, deliberate crash (temporary, uncommitted) → verify: the event shows
+      up in the owner's Sentry dashboard — crash thrown on the emulator; dashboard check owed
+- [x] G. `docs/DESIGN.md` §4.8 records the link; gates; `/code-review`; commit + PR
+      → verified: 586 tests, typecheck, lint, Android export; emulator: link drawn under the
+      language pill, opens `/privacy/?lang=en` in Chrome; crash thrown with `RNSentry:
+      Starting with DSN` in logcat
+
+Review fixes: the spec axis caught the policy promising less than Sentry's defaults send —
+sessions on every launch, and fetch breadcrumbs whose URLs carry account ids. Turned both off
+(tested) rather than widening the policy; password "hashed", email "never shown publicly",
+and the in-app change notice dropped (nothing in the app can do it).
+
+Owed on #12 (the PR does not close it):
+- Owner: confirm the test crash in the Sentry dashboard (environment `development`).
+- Owner: Sentry project → Settings → "Prevent Storing of IP Addresses" — the policy says
+  reports carry no location.
+- Owner: domain + contact email → fill `[OPERATOR]` / `[EMAIL]` in
+  `rospot-landing/privacy/index.html`, deploy, set `EXPO_PUBLIC_PRIVACY_URL`.
+- Release builds upload source maps: set `SENTRY_ORG`, `SENTRY_PROJECT`,
+  `SENTRY_AUTH_TOKEN`, or `SENTRY_DISABLE_AUTO_UPLOAD=true`, or the build fails.
+- When Google/Apple sign-in ships (#6), the policy's account section must say so.

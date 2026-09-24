@@ -32,3 +32,12 @@ jest.mock('@react-native-async-storage/async-storage', () =>
 // rather than intermittent.
 const { notifyManager } = require('@tanstack/react-query');
 notifyManager.setScheduler((callback) => callback());
+
+// Sentry has no native side under Jest, and merely importing the SDK leaves a
+// handle open (Jest waits on it after the last test) and wraps `console.error`
+// under every warning. The root layout only needs `wrap` to hand its component
+// back, and `crashReporting.test.ts` asserts on `init`.
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  wrap: (component) => component,
+}));

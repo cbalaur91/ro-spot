@@ -127,6 +127,7 @@ export default {
     signOut: 'Ieși din cont',
     signOutFailed: 'Nu am putut să te deconectez. Încearcă din nou.',
     language: 'Limba',
+    privacy: 'Politica de confidențialitate',
     delete: {
       action: 'Șterge contul',
       title: 'Ștergi contul?',

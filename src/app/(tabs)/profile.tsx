@@ -1,3 +1,4 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'expo-router';
 import { useEffect, useRef, useState } from 'react';
@@ -5,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import {
   AccessibilityInfo,
   ActivityIndicator,
+  Alert,
+  Linking,
   Pressable,
   ScrollView,
   Text,
@@ -261,6 +264,41 @@ function Language() {
 }
 
 /**
+ * The privacy policy, on the site rather than in the app: a store requirement,
+ * so it is on the tab for everyone who reads the app, and it is quiet — muted,
+ * like "Delete account", with an arrow out because pressing it leaves the app.
+ *
+ * Absent until the build is given a URL (`EXPO_PUBLIC_PRIVACY_URL`): a link that
+ * can only fail is worse than no link. It opens in the language the app is in —
+ * the page reads `lang` and otherwise starts in Romanian.
+ */
+function PrivacyPolicy() {
+  const { t, i18n } = useTranslation();
+  const base = process.env.EXPO_PUBLIC_PRIVACY_URL;
+
+  if (!base) return null;
+
+  const url = `${base}${base.includes('?') ? '&' : '?'}lang=${i18n.resolvedLanguage ?? i18n.language}`;
+
+  return (
+    <Pressable
+      accessibilityRole="link"
+      // Named outright: the icon is a font glyph, and it would otherwise be
+      // read out after the words.
+      accessibilityLabel={t('profile.privacy')}
+      onPress={() => {
+        Linking.openURL(url).catch(() => Alert.alert(t('detail.linkFailed')));
+      }}
+      // The 44 target by padding, as under "Sign out".
+      className="flex-row items-center gap-1 self-start py-[13px] pr-3 active:opacity-70"
+    >
+      <Text className="text-[12.5px] text-muted">{t('profile.privacy')}</Text>
+      <Ionicons name="open-outline" size={12} color={colors.muted} />
+    </Pressable>
+  );
+}
+
+/**
  * Deleting the account: a store requirement, so it is present and it is quiet —
  * a muted link under "Sign out" that asks before it does anything.
  *
@@ -391,6 +429,7 @@ function Account({ user }: { user: AuthUser }) {
       <YourPlaces />
       <View className="mt-6">
         <Language />
+        <PrivacyPolicy />
       </View>
       {/* `mt-auto`: the way out sits at the foot of a short screen, and 24
           below the language on a long one. */}
@@ -452,6 +491,7 @@ export default function ProfileScreen() {
               block — the invitation keeps the middle of the screen. */}
           <View className="px-6 pb-[18px]">
             <Language />
+            <PrivacyPolicy />
           </View>
         </ScrollView>
       )}

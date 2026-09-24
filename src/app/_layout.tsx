@@ -1,14 +1,19 @@
 import '../../global.css';
 
+import * as Sentry from '@sentry/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { startCrashReporting } from '@/crashReporting';
 import { LocationProvider } from '@/hooks/useOrigin';
 import { restoreLanguage } from '@/i18n';
 import { SessionProvider } from '@/state/session';
+
+// First, so a crash anywhere after this line is reported. Off without a DSN.
+startCrashReporting(process.env.EXPO_PUBLIC_SENTRY_DSN);
 
 const queryClient = new QueryClient();
 
@@ -18,7 +23,7 @@ const queryClient = new QueryClient();
 // Romanian first.
 void SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+function RootLayout() {
   const [languageRestored, setLanguageRestored] = useState(false);
 
   useEffect(() => {
@@ -49,3 +54,7 @@ export default function RootLayout() {
     </QueryClientProvider>
   );
 }
+
+// Catches what React would otherwise swallow — a render that throws — and
+// reports it with the component stack. A pass-through when Sentry is off.
+export default Sentry.wrap(RootLayout);
