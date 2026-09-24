@@ -20,11 +20,11 @@ Spec: `docs/SPEC-v1.md`. Each step ends with its verification before being check
 ## Phase 3 — Contribute (auth)
 - [ ] 10. Auth flows: email/password ✅ (#5); Google native + Apple flag deferred 2026-09-19 (#6, needs phone + OAuth client) → verify: sign up/in/out on Android device; session persists across restarts
 - [x] 11. Submission form (#7, device pass owed): fields → geocode → draggable pin → photo pick + compress (≤5, ~1600px) → upload → insert pending → verify: place appears `pending` in dashboard, invisible in app; flipping to `approved` makes it appear
-- [ ] 12. Own-place edit → back to pending; duplicate-proximity flag on insert → verify: edited place disappears from public view until re-approved
-- [ ] 13. Profile screen: my places (with status), language toggle, sign out, delete account → verify: deletion via a throwaway account
+- [x] 12. Own-place edit → back to pending; duplicate-proximity flag on insert → verify: edited place disappears from public view until re-approved (#8)
+- [x] 13. Profile screen: my places (with status), language toggle, sign out, delete account → verify: deletion via a throwaway account (#8, #10, #13)
 
 ## Phase 4 — Ship-readiness
-- [ ] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard
+- [x] 14. Sentry wired into dev build → verify: test crash appears in Sentry dashboard → verified: `JAVASCRIPT-REACT-1` (#12, PR #49)
 - [x] 15. i18n completeness pass (all UI strings RO+EN) → verified: audit + Profile language toggle, emulator pass in both locales (#13, PR #48)
 - [ ] 16. Privacy policy page (hosted) + linked in app → verify: URL loads from the app
 - [x] 17. Seed Metro Detroit places (owner provides 10–20; script inserts as approved) → verified: pins render on Detroit map (#11, 6 places by owner's call)
