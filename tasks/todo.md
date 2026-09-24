@@ -1474,6 +1474,9 @@ stale for the Sentry half: the emulator runs a local debug APK, which is a dev b
       `JAVASCRIPT-REACT-1` in Sentry (org `aiwebhub`, project `javascript-react`), environment
       `development`. The first two crashes went to a project that had since been replaced —
       the `.env` DSN was stale; `sentry api …/keys/` gave the live one
+      Sentry still derived a city from the connection with IP storage off (`user.geo`:
+      Detroit), against the policy. Owner chose to scrub it: project `relayPiiConfig` =
+      Remove Anything from `$user.geo.**`; `JAVASCRIPT-REACT-2` arrived with `user.geo: {}`
 - [x] G. `docs/DESIGN.md` §4.8 records the link; gates; `/code-review`; commit + PR
       → verified: 586 tests, typecheck, lint, Android export; emulator: link drawn under the
       language pill, opens `/privacy/?lang=en` in Chrome; crash thrown with `RNSentry:
@@ -1485,8 +1488,6 @@ sessions on every launch, and fetch breadcrumbs whose URLs carry account ids. Tu
 and the in-app change notice dropped (nothing in the app can do it).
 
 Owed on #12 (the PR does not close it):
-- Sentry still derives a city from the connection (`user.geo`: Detroit) with IP storage
-  off — the policy says reports carry no location. Scrub it or disclose it.
 - Owner: domain + contact email → fill `[OPERATOR]` / `[EMAIL]` in
   `rospot-landing/privacy/index.html`, deploy, set `EXPO_PUBLIC_PRIVACY_URL`.
 - Release builds upload source maps: set `SENTRY_ORG`, `SENTRY_PROJECT`,
