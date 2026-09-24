@@ -801,8 +801,9 @@ session takes a moment to come back off the device, and drawing the invitation f
 flash "sign in" at someone who already is, every time they opened the tab.
 
 **Signed in** — the body at the 24 gutter, `py-[18px]`, in a `ScrollView` whose content
-container has `flexGrow: 1`: identity at the top, "your places" between, and the account
-block at the foot of a short screen or below the cards on a long one. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
+container has `flexGrow: 1`: identity at the top, then "your places", then the language, and
+the account block at the foot of a short screen (`mt-auto`, with `pt-6` so a long one still
+keeps 24 above it) or 24 below the language block on a long one. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
 counter-rotated inside so they read upright, `text-[15px] font-semibold text-surface`,
 `gap-[13px]` to the address in `text-[16px] font-semibold`. There is no name to show until
 profiles exist, so the address takes the name's line and the initials are read off it —
@@ -823,9 +824,12 @@ really is still signed in.
 **Anonymous** — a centred column at the 40 measure: `profile.anonymousTitle` in
 `text-[17px] font-semibold`, `mt-[7px]` to the hint (`text-[13px] leading-[19.5px]
 text-muted`, centred), `mt-6` to a primary pill reading `profile.signIn` that pushes
-`/sign-in`. It states the bargain rather than blocking on it.
+`/sign-in`. It states the bargain rather than blocking on it. Under it, at the foot and the
+24 gutter (`px-6 pb-[18px]`), the **language** block — the two in a `ScrollView` with
+`flexGrow: 1`, so at enlarged text the pill can still be reached — — most people never sign in, and they
+read the app too. The canvas only drew the signed-in page; this is the addition.
 
-**Your places**, `mt-6`, `flex-1` so it takes the room between identity and account: the form
+**Your places**, `mt-6`: the form
 label ("YOUR PLACES"), a `text-[11.5px] text-muted` line under it saying that an edit goes
 back for review — the rule stated before it can surprise anybody — then §3 cards at `mt-1.5`
 inside the block's own `gap-1.5`, so 12 separates the cards from the hint and 6 the hint from
@@ -862,14 +866,23 @@ included. The pressed link unmounts, so the card's title takes screen-reader foc
 `text-[12.5px] text-cherry` above the same buttons. Success needs no navigation — the
 session ends and the tab redraws as the invitation, as after a sign-out.
 
-One block of the canvas's Profile is **not built yet** and arrives with the slice that
-gives it something to show. It slots in between "your places" and the account block:
+**Language** (#13), `mt-6` under "your places": the form label (`profile.language`,
+"LANGUAGE"), `gap-2`, then a segmented pill — `flex-row rounded-full border border-line
+bg-card p-[3px]`, two `flex-1` halves at `py-2`, the selected one `rounded-full bg-cherry` with
+a `text-[13px] font-semibold text-surface` label, the other `text-[13px] font-medium
+text-muted`. English first, as on the canvas. The halves are `py-[10px]`, not the canvas's 8:
+with the pill's own `p-[3px]` and border that is 38 of half, and a `hitSlop` of 3 — inside the
+pill, where Android still delivers the touch — makes it the 44 target. Labels are the languages' own endonyms,
+"English" and "Română", untranslated (`LANGUAGE_NAMES` in `src/i18n/index.ts`) — names, not
+copy, so each can be found by someone who can't read the other.
 
-- **Language** (#13) — the form label ("LANGUAGE"), then a segmented pill: `border
-  border-line rounded-full p-[3px] bg-card`, two halves at `py-2`, the selected one filled
-  cherry and full-round with a `text-[13px] font-semibold text-surface` label, the other
-  `text-[13px] font-medium text-muted`. Labels are the language's own endonyms, "English"
-  and "Română", untranslated.
+The halves are `radio`s in a `radiogroup`, `checked` on the current language; each carries
+`accessibilityLanguage` so VoiceOver reads "Română" in a Romanian voice. A press switches
+i18next and every mounted screen redraws in place — tab bar included — then the choice is
+stored (`setLanguage`, AsyncStorage key `rospot.language`). With no choice stored the app
+speaks the device's first language it knows, English otherwise. At launch the root layout
+holds the splash screen until `restoreLanguage` has read the choice back, so a phone set to
+one language never shows a frame of it to someone who chose the other.
 
 #### 4.9 Edit your place — `src/app/edit/[id].tsx`
 

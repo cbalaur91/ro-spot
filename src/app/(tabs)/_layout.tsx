@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
 import { useTranslation } from 'react-i18next';
-import type { ColorValue } from 'react-native';
+import { type ColorValue, Platform } from 'react-native';
 
 import { CategoryFilterProvider } from '@/state/categoryFilter';
 import { colors } from '@/theme';
@@ -15,6 +15,14 @@ function tabIcon(name: IconName) {
   TabIcon.displayName = `TabIcon(${name})`;
   return TabIcon;
 }
+
+/** The four tabs, in the order the bar draws them. */
+const TABS = [
+  { name: 'index', label: 'tabs.map', icon: 'map-outline' },
+  { name: 'list', label: 'tabs.list', icon: 'list-outline' },
+  { name: 'add', label: 'tabs.add', icon: 'add-circle-outline' },
+  { name: 'profile', label: 'tabs.profile', icon: 'person-outline' },
+] as const;
 
 export default function TabsLayout() {
   const { t } = useTranslation();
@@ -38,22 +46,29 @@ export default function TabsLayout() {
           tabBarLabelStyle: { fontSize: 11, letterSpacing: 0.2 },
         }}
       >
-        <Tabs.Screen
-          name="index"
-          options={{ title: t('tabs.map'), tabBarIcon: tabIcon('map-outline') }}
-        />
-        <Tabs.Screen
-          name="list"
-          options={{ title: t('tabs.list'), tabBarIcon: tabIcon('list-outline') }}
-        />
-        <Tabs.Screen
-          name="add"
-          options={{ title: t('tabs.add'), tabBarIcon: tabIcon('add-circle-outline') }}
-        />
-        <Tabs.Screen
-          name="profile"
-          options={{ title: t('tabs.profile'), tabBarIcon: tabIcon('person-outline') }}
-        />
+        {TABS.map(({ name, label, icon }, index) => {
+          const title = t(label);
+
+          return (
+            <Tabs.Screen
+              key={name}
+              name={name}
+              options={{
+                title,
+                // Left unset, the navigator reads "Hartă, tab, 1 of 4" on iOS.
+                tabBarAccessibilityLabel:
+                  Platform.OS === 'ios'
+                    ? t('tabs.accessibilityLabel', {
+                        label: title,
+                        index: index + 1,
+                        total: TABS.length,
+                      })
+                    : undefined,
+                tabBarIcon: tabIcon(icon),
+              }}
+            />
+          );
+        })}
       </Tabs>
     </CategoryFilterProvider>
   );

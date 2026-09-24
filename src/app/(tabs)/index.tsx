@@ -427,7 +427,7 @@ export default function MapScreen() {
             {isError ? (
               <MapCard>
                 <View className="flex-row items-center justify-between gap-4">
-                  <Text className="flex-1 text-[13px] text-ink">{t('map.error')}</Text>
+                  <Text className="flex-1 text-[13px] text-ink">{t('browse.error')}</Text>
                   <Pressable
                     accessibilityRole="button"
                     onPress={refetch}

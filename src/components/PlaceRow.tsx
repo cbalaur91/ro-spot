@@ -141,7 +141,12 @@ export function PlaceRow({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`${category}, ${place.name}, ${place.address}, ${distance}`}
+        accessibilityLabel={t('list.card', {
+          category,
+          name: place.name,
+          address: place.address,
+          distance,
+        })}
         onPress={onPress}
         // A card can't take a full-bleed press highlight without losing its
         // edges, so the part that was pressed dims instead.

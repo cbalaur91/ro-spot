@@ -1,10 +1,11 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, render, screen, userEvent, waitFor } from '@testing-library/react-native';
 import type { ReactElement } from 'react';
 import { AccessibilityInfo } from 'react-native';
 
 import type { Place } from '@/data/places';
-import i18n from '@/i18n';
+import i18n, { LANGUAGE_KEY } from '@/i18n';
 import { SessionProvider } from '@/state/session';
 
 import ProfileScreen from '../profile';
@@ -362,5 +363,63 @@ describe('Profile tab, deleting the account', () => {
     expect(screen.getByText('Ștergi contul?')).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Șterge-mi contul' })).toBeOnTheScreen();
     expect(screen.getByRole('button', { name: 'Păstrează contul' })).toBeOnTheScreen();
+  });
+});
+
+describe('Profile tab, language', () => {
+  beforeEach(async () => {
+    await AsyncStorage.clear();
+  });
+
+  it('says which language the app is in', async () => {
+    currentUser.mockResolvedValue(ana);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByText('Language')).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'English' })).toBeChecked();
+    expect(screen.getByRole('radio', { name: 'Română' })).not.toBeChecked();
+  });
+
+  it('switches the whole tab, and keeps the choice for the next launch', async () => {
+    currentUser.mockResolvedValue(ana);
+    await renderScreen(<ProfileScreen />);
+    await waitFor(() => expect(screen.getByText('ana.pop@example.com')).toBeOnTheScreen());
+
+    await userEvent.press(screen.getByRole('radio', { name: 'Română' }));
+
+    // The page redraws in place — the header, the blocks and the way out.
+    expect(await screen.findByText('Profil')).toBeOnTheScreen();
+    expect(screen.getByText('Limba')).toBeOnTheScreen();
+    expect(screen.getByRole('button', { name: 'Ieși din cont' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Română' })).toBeChecked();
+    expect(await AsyncStorage.getItem(LANGUAGE_KEY)).toBe('ro');
+
+    // And back again, from the Romanian page.
+    await userEvent.press(screen.getByRole('radio', { name: 'English' }));
+    expect(await screen.findByText('Profile')).toBeOnTheScreen();
+    expect(await AsyncStorage.getItem(LANGUAGE_KEY)).toBe('en');
+  });
+
+  it('names each language in its own words, whatever the app is speaking', async () => {
+    await i18n.changeLanguage('ro');
+    currentUser.mockResolvedValue(ana);
+
+    await renderScreen(<ProfileScreen />);
+
+    expect(await screen.findByRole('radio', { name: 'English' })).toBeOnTheScreen();
+    expect(screen.getByRole('radio', { name: 'Română' })).toBeChecked();
+  });
+
+  it('is there for someone who never signs in', async () => {
+    // Most people browse without an account, and they read the app too.
+    currentUser.mockResolvedValue(null);
+
+    await renderScreen(<ProfileScreen />);
+    await waitFor(() => expect(screen.getByText('Browsing needs no account.')).toBeOnTheScreen());
+
+    await userEvent.press(screen.getByRole('radio', { name: 'Română' }));
+
+    expect(await screen.findByText('Ca să te uiți, nu ai nevoie de cont.')).toBeOnTheScreen();
   });
 });

@@ -197,7 +197,7 @@ export default function ListScreen() {
         {isPending ? (
           <Loading label={t('list.loading')} />
         ) : (
-          <LoadFailed label={t('list.error')} onRetry={refetch} />
+          <LoadFailed label={t('browse.error')} onRetry={refetch} />
         )}
       </SafeAreaView>
     );
