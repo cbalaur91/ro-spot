@@ -434,7 +434,7 @@ describe('List tab', () => {
 
     await renderScreen(<ListScreen />);
 
-    expect(await screen.findByText('Something went wrong loading places.')).toBeTruthy();
+    expect(await screen.findByText('Places could not be loaded.')).toBeTruthy();
     expect(screen.queryByText(/\d+ places?$/)).toBeNull();
   });
 
@@ -589,12 +589,17 @@ describe('List tab', () => {
     );
   });
 
-  it('names the actions in Romanian', async () => {
+  it('names the card and its actions in Romanian', async () => {
     await i18n.changeLanguage('ro');
     fetchApprovedPlaces.mockResolvedValue([{ ...bakery, phone: '(313) 555-1234' }]);
 
     await renderScreen(<ListScreen />);
 
+    expect(
+      await screen.findByRole('button', {
+        name: 'Mâncare și băutură, Cofetăria Bucur, 100 Woodward Ave, Detroit, MI, 0,6 mi',
+      })
+    ).toBeTruthy();
     expect(await screen.findByRole('link', { name: 'Traseu până la Cofetăria Bucur' })).toBeTruthy();
     expect(screen.getByRole('link', { name: 'Sună la Cofetăria Bucur' })).toBeTruthy();
     expect(screen.getByText('Traseu')).toBeTruthy();
@@ -606,7 +611,7 @@ describe('List tab', () => {
 
     await renderScreen(<ListScreen />);
 
-    expect(await screen.findByText('Something went wrong loading places.')).toBeTruthy();
+    expect(await screen.findByText('Places could not be loaded.')).toBeTruthy();
     await waitFor(() => expect(screen.getByText('Try again')).toBeTruthy());
   });
 });

@@ -1415,3 +1415,29 @@ photos migration comment (noted in `plan.ts`, migration left as applied).
 **Flagged, not done:** an approved place named "Test" (9157 Dallas Dr, Grosse Ile, authored
 2026-09-20) is live on the map — owner to delete or reject. No photos yet: drop JPEGs into
 `assets/seed-photos/<slug>/` and re-run.
+
+## Issue #13 — i18n completeness pass (Romanian + English)
+
+Audit first (every non-test file in `src/`): the app already routed every drawn string,
+placeholder, label and tab title through `t()`, and the RO/EN key sets matched (RO adds only
+the `_few` plurals). What was missing was the toggle, and a few strings built in code.
+
+- [x] A. `setLanguage` / `restoreLanguage` / `resolveDeviceLanguage` in `src/i18n`, TDD →
+      verified: 13 tests — device-language order, a stored choice beating the device, a
+      garbage stored value ignored, and storage that throws on read or write never blocking
+- [x] B. Root layout holds the splash screen until the stored choice is back → verified:
+      3 tests; the screen is never drawn in English when Romanian was chosen
+- [x] C. Profile language block (DESIGN §4.8) for signed-in *and* anonymous → verified: 4 tests
+      (radios, live switch of the whole tab, persisted value, endonyms in both locales)
+- [x] D. `map.error` / `list.error` → one `browse.error`; List card's accessible name through
+      `list.card` like `map.card`; iOS tab labels via `tabs.a11y` instead of the navigator's
+      English "tab, 1 of 4" → verified: list + new tab-bar suites
+- [x] E. Emulator pass → verified: toggle switches every tab live (tab bar, List chips,
+      `1,4 mi`); radios report `checked`; choice survives force-stop; app locale `ro-RO` with
+      nothing stored opens Romanian, English device opens English; English chosen on a
+      Romanian device wins after restart; anonymous layout; font scale 2.0 holds
+- [x] F. Gates → verified: typecheck, lint, `npm test` 577 green, Android bundle 5.5MB
+
+Left for later (flagged in the PR): iOS permission prompts in `app.config.ts` are
+English-only (needs `locales` in the Expo config; unverifiable without an iOS build); the
+sign-in submit has no accessible name while busy; map markers are unlabelled.

@@ -4,6 +4,7 @@ export default {
     list: 'Listă',
     add: 'Adaugă',
     profile: 'Profil',
+    a11y: '{{label}}, fila {{index}} din {{total}}',
   },
   categories: {
     historic: 'Istoric',
@@ -29,9 +30,11 @@ export default {
     noMatch: 'Niciun loc nu se potrivește cu filtrele.',
     clear: 'Șterge filtrele',
   },
+  browse: {
+    error: 'Locurile nu au putut fi încărcate.',
+  },
   map: {
     empty: 'Niciun loc pe hartă deocamdată.',
-    error: 'Locurile nu au putut fi încărcate.',
     webUnsupported: 'Harta are nevoie de aplicația de iOS sau Android.',
     webUnsupportedHint: 'Aceleași locuri sunt în fila Listă.',
     card: '{{name}}, {{category}}, {{address}}',
@@ -59,7 +62,7 @@ export default {
     // dansatori, iar linia asta o spune pe românește.
     emptyHint: 'Locurile aprobate apar aici — hora are nevoie de dansatori.',
     emptyCta: 'Adaugă primul loc',
-    error: 'Locurile nu au putut fi încărcate.',
+    card: '{{category}}, {{name}}, {{address}}, {{distance}}',
     // Trei forme, nu două: „1 loc”, „2 locuri” (și 0, și 101–119), „20 de locuri”.
     count_one: '{{count}} loc',
     count_few: '{{count}} locuri',
@@ -123,6 +126,7 @@ export default {
     signIn: 'Intră în cont',
     signOut: 'Ieși din cont',
     signOutFailed: 'Nu am putut să te deconectez. Încearcă din nou.',
+    language: 'Limba',
     delete: {
       action: 'Șterge contul',
       title: 'Ștergi contul?',

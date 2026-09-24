@@ -13,10 +13,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { locality } from '@/address';
+import { FormLabel } from '@/components/Form';
 import { Loading } from '@/components/ScreenState';
 import { type AuthUser, deleteAccount, signOut } from '@/data/auth';
 import type { Place } from '@/data/places';
 import { useMyPlaces } from '@/hooks/useMyPlaces';
+import { LANGUAGE_NAMES, setLanguage, type SupportedLanguage } from '@/i18n';
 import { StarBand } from '@/motifs/Band';
 import { Diamond } from '@/motifs/Diamond';
 import { useSession } from '@/state/session';
@@ -167,7 +169,7 @@ function YourPlaces() {
   const { places, isPending, isError, refetch } = useMyPlaces();
 
   return (
-    <View className="mt-6 flex-1 gap-1.5">
+    <View className="mt-6 gap-1.5">
       <Text className="text-[11px] font-semibold uppercase tracking-[0.8px] text-ink">
         {t('profile.places.label')}
       </Text>
@@ -198,6 +200,61 @@ function YourPlaces() {
           ))}
         </View>
       )}
+    </View>
+  );
+}
+
+/** The canvas's order: English first, as on the design. */
+const LANGUAGE_ORDER: readonly SupportedLanguage[] = ['en', 'ro'];
+
+/**
+ * The app's language, whoever is reading — signed in or not, because most
+ * people browse without an account and they read the app too.
+ *
+ * A segmented pill of two radios. Each is named in its own language, never
+ * translated, so it can be found by someone who can't read the other one.
+ * Pressing one redraws every screen in place (they all read the language
+ * through `useTranslation`) and keeps the choice for the next launch.
+ */
+function Language() {
+  const { t, i18n } = useTranslation();
+
+  return (
+    <View className="gap-2">
+      <FormLabel label={t('profile.language')} />
+      <View
+        accessibilityRole="radiogroup"
+        className="flex-row rounded-full border border-line bg-card p-[3px]"
+      >
+        {LANGUAGE_ORDER.map((language) => {
+          const isOn = i18n.resolvedLanguage === language;
+
+          return (
+            <Pressable
+              key={language}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: isOn }}
+              // iOS reads the name in its own language's voice; Android ignores it.
+              accessibilityLanguage={language}
+              onPress={() => void setLanguage(language)}
+              // The design's `py-2` draws a 34 half; the slop makes it the 44
+              // target without moving the pill's edge.
+              hitSlop={{ top: 5, bottom: 5 }}
+              className={`flex-1 items-center rounded-full py-2 ${isOn ? 'bg-cherry' : ''}`}
+            >
+              <Text
+                className={
+                  isOn
+                    ? 'text-[13px] font-semibold text-surface'
+                    : 'text-[13px] font-medium text-muted'
+                }
+              >
+                {LANGUAGE_NAMES[language]}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -331,7 +388,12 @@ function Account({ user }: { user: AuthUser }) {
     <>
       <Identity user={user} />
       <YourPlaces />
-      <View className="mt-6 gap-3">
+      <View className="mt-6">
+        <Language />
+      </View>
+      {/* `mt-auto`: the way out sits at the foot of a short screen, and 24
+          below the language on a long one. */}
+      <View className="mt-auto gap-3 pt-6">
         {failed ? (
           <Text accessibilityLiveRegion="polite" className="text-[12.5px] text-cherry">
             {t('profile.signOutFailed')}
@@ -353,11 +415,7 @@ function Account({ user }: { user: AuthUser }) {
 }
 
 /**
- * Who you are here, what you have sent in, and the way out.
- *
- * The language toggle is the design's other block; it arrives with the slice
- * that gives it something to show (#13) and slots in between "your places" and
- * the account block.
+ * Who you are here, what you have sent in, the language, and the way out.
  */
 export default function ProfileScreen() {
   const { t } = useTranslation();
@@ -385,7 +443,14 @@ export default function ProfileScreen() {
           <Account user={user} />
         </ScrollView>
       ) : (
-        <Invitation />
+        <>
+          <Invitation />
+          {/* At the foot, where the signed-in page keeps it near the account
+              block — the invitation keeps the middle of the screen. */}
+          <View className="px-6 pb-[18px]">
+            <Language />
+          </View>
+        </>
       )}
     </SafeAreaView>
   );

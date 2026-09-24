@@ -1,17 +1,37 @@
 import '../../global.css';
-import '@/i18n';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { Stack } from 'expo-router';
+import { SplashScreen, Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect, useState } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { LocationProvider } from '@/hooks/useOrigin';
+import { restoreLanguage } from '@/i18n';
 import { SessionProvider } from '@/state/session';
 
 const queryClient = new QueryClient();
 
+// i18next starts in the device language; a language chosen on the Profile tab
+// comes back off the device a moment later. The splash screen stays up until it
+// has, so someone who chose English on a Romanian phone never sees a frame of
+// Romanian first.
+void SplashScreen.preventAutoHideAsync();
+
 export default function RootLayout() {
+  const [languageRestored, setLanguageRestored] = useState(false);
+
+  useEffect(() => {
+    // Never rejects: an unreadable choice leaves the device language.
+    void restoreLanguage().then(() => setLanguageRestored(true));
+  }, []);
+
+  useEffect(() => {
+    if (languageRestored) SplashScreen.hide();
+  }, [languageRestored]);
+
+  if (!languageRestored) return null;
+
   return (
     <QueryClientProvider client={queryClient}>
       {/* Above the tabs, because the sign-in screen is pushed onto this stack

@@ -4,6 +4,10 @@ export default {
     list: 'List',
     add: 'Add',
     profile: 'Profile',
+    // What VoiceOver hears for a tab. The navigator would build this itself,
+    // in English whatever the app speaks; Android's TalkBack adds "tab" on its
+    // own, so this is iOS-only.
+    a11y: '{{label}}, tab, {{index}} of {{total}}',
   },
   categories: {
     historic: 'Historic',
@@ -37,9 +41,12 @@ export default {
     noMatch: 'No places match these filters.',
     clear: 'Clear filters',
   },
+  browse: {
+    // The same failure on both tabs, so the same words — as with the filters.
+    error: 'Places could not be loaded.',
+  },
   map: {
     empty: 'No places on the map yet.',
-    error: 'Places could not be loaded.',
     webUnsupported: 'The map needs the iOS or Android app.',
     webUnsupportedHint: 'The same places are in the List tab.',
     // The card at the map's foot, as a screen reader hears it: which place,
@@ -75,7 +82,9 @@ export default {
     // invitation rather than as decoration.
     emptyHint: 'Approved places show up here — the hora needs dancers.',
     emptyCta: 'Add the first place',
-    error: 'Something went wrong loading places.',
+    // A card as a screen reader hears it — the map card's words, in the order
+    // the card draws them, with the distance the map card has no room for.
+    card: '{{category}}, {{name}}, {{address}}, {{distance}}',
     // How many places the chips left, under the chips. i18next picks the form
     // from the language's own plural rules.
     count_one: '{{count}} place',
@@ -155,6 +164,8 @@ export default {
     signIn: 'Sign in',
     signOut: 'Sign out',
     signOutFailed: 'Could not sign you out. Try again.',
+    // Over the toggle; the two options are the languages' own names.
+    language: 'Language',
     // Account deletion: a quiet link, then one explicit confirmation. The
     // confirm button names the act in full, and the other names what staying
     // keeps — "Cancel" would not say which of the two it cancels.
