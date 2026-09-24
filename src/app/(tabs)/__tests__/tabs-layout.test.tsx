@@ -33,8 +33,7 @@ describe('the tab bar', () => {
   });
 
   it('tells VoiceOver where each tab sits in Romanian, not half in English', async () => {
-    // Left alone, the navigator builds "<label>, tab, 1 of 4" itself on iOS —
-    // in English, whatever the app speaks. Jest runs as iOS.
+    // Jest runs as iOS.
     await i18n.changeLanguage('ro');
 
     await renderTabs();

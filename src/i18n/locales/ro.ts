@@ -4,7 +4,7 @@ export default {
     list: 'Listă',
     add: 'Adaugă',
     profile: 'Profil',
-    a11y: '{{label}}, fila {{index}} din {{total}}',
+    accessibilityLabel: '{{label}}, fila {{index}} din {{total}}',
   },
   categories: {
     historic: 'Istoric',

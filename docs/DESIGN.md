@@ -803,7 +803,7 @@ flash "sign in" at someone who already is, every time they opened the tab.
 **Signed in** — the body at the 24 gutter, `py-[18px]`, in a `ScrollView` whose content
 container has `flexGrow: 1`: identity at the top, then "your places", then the language, and
 the account block at the foot of a short screen (`mt-auto`, with `pt-6` so a long one still
-keeps 24 above it) or below the cards on a long one. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
+keeps 24 above it) or 24 below the language block on a long one. Identity is the 44px **cherry rhomb with an 8px corner radius**, initials
 counter-rotated inside so they read upright, `text-[15px] font-semibold text-surface`,
 `gap-[13px]` to the address in `text-[16px] font-semibold`. There is no name to show until
 profiles exist, so the address takes the name's line and the initials are read off it —
@@ -825,7 +825,8 @@ really is still signed in.
 `text-[17px] font-semibold`, `mt-[7px]` to the hint (`text-[13px] leading-[19.5px]
 text-muted`, centred), `mt-6` to a primary pill reading `profile.signIn` that pushes
 `/sign-in`. It states the bargain rather than blocking on it. Under it, at the foot and the
-24 gutter (`px-6 pb-[18px]`), the **language** block — most people never sign in, and they
+24 gutter (`px-6 pb-[18px]`), the **language** block — the two in a `ScrollView` with
+`flexGrow: 1`, so at enlarged text the pill can still be reached — — most people never sign in, and they
 read the app too. The canvas only drew the signed-in page; this is the addition.
 
 **Your places**, `mt-6`: the form
@@ -869,10 +870,11 @@ session ends and the tab redraws as the invitation, as after a sign-out.
 "LANGUAGE"), `gap-2`, then a segmented pill — `flex-row rounded-full border border-line
 bg-card p-[3px]`, two `flex-1` halves at `py-2`, the selected one `rounded-full bg-cherry` with
 a `text-[13px] font-semibold text-surface` label, the other `text-[13px] font-medium
-text-muted`. English first, as on the canvas. Labels are the languages' own endonyms,
+text-muted`. English first, as on the canvas. The halves are `py-[10px]`, not the canvas's 8:
+with the pill's own `p-[3px]` and border that is 38 of half, and a `hitSlop` of 3 — inside the
+pill, where Android still delivers the touch — makes it the 44 target. Labels are the languages' own endonyms,
 "English" and "Română", untranslated (`LANGUAGE_NAMES` in `src/i18n/index.ts`) — names, not
-copy, so each can be found by someone who can't read the other. The halves are 34 tall, so a
-vertical `hitSlop` of 5 makes them the 44 target without moving the pill's edge.
+copy, so each can be found by someone who can't read the other.
 
 The halves are `radio`s in a `radiogroup`, `checked` on the current language; each carries
 `accessibilityLanguage` so VoiceOver reads "Română" in a Romanian voice. A press switches

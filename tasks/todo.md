@@ -1437,6 +1437,10 @@ the `_few` plurals). What was missing was the toggle, and a few strings built in
       nothing stored opens Romanian, English device opens English; English chosen on a
       Romanian device wins after restart; anonymous layout; font scale 2.0 holds
 - [x] F. Gates → verified: typecheck, lint, `npm test` 577 green, Android bundle 5.5MB
+- [x] G. `/code-review` (standards + spec) and fixes → verified: language halves re-measured on
+      the emulator at 38dp + 3 slop (the first cut's slop reached outside the pill, where
+      Android drops the touch); anonymous Profile now scrolls at enlarged text; DESIGN §4.8
+      wording, `tabs.accessibilityLabel` rename, splash assertion read at module load
 
 Left for later (flagged in the PR): iOS permission prompts in `app.config.ts` are
 English-only (needs `locales` in the Expo config; unverifiable without an iOS build); the

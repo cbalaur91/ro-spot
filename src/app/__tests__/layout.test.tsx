@@ -38,6 +38,10 @@ const { SplashScreen } = jest.requireMock('expo-router') as {
   SplashScreen: { preventAutoHideAsync: jest.Mock; hide: jest.Mock };
 };
 
+// Read now, while the only thing that has run is the layout module loading —
+// before any test or mock reset can touch the count.
+const heldOnLoad = SplashScreen.preventAutoHideAsync.mock.calls.length > 0;
+
 beforeEach(async () => {
   mockDrawnIn.length = 0;
   await AsyncStorage.clear();
@@ -46,7 +50,7 @@ beforeEach(async () => {
 
 describe('launch', () => {
   it('holds the splash screen from the moment the app loads', () => {
-    expect(SplashScreen.preventAutoHideAsync).toHaveBeenCalled();
+    expect(heldOnLoad).toBe(true);
   });
 
   it('draws the first screen in the language chosen last time, never the device one first', async () => {

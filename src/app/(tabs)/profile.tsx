@@ -237,10 +237,11 @@ function Language() {
               // iOS reads the name in its own language's voice; Android ignores it.
               accessibilityLanguage={language}
               onPress={() => void setLanguage(language)}
-              // The design's `py-2` draws a 34 half; the slop makes it the 44
-              // target without moving the pill's edge.
-              hitSlop={{ top: 5, bottom: 5 }}
-              className={`flex-1 items-center rounded-full py-2 ${isOn ? 'bg-cherry' : ''}`}
+              // A 38 half and 3 of slop is the 44 target. The slop stays inside
+              // the pill's own padding and border: Android drops a touch outside
+              // the parent's bounds.
+              hitSlop={{ top: 3, bottom: 3 }}
+              className={`flex-1 items-center rounded-full py-[10px] ${isOn ? 'bg-cherry' : ''}`}
             >
               <Text
                 className={
@@ -443,14 +444,16 @@ export default function ProfileScreen() {
           <Account user={user} />
         </ScrollView>
       ) : (
-        <>
+        // A scroll for the same reason as the signed-in page: at enlarged
+        // text the language pill must still be reachable.
+        <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
           <Invitation />
           {/* At the foot, where the signed-in page keeps it near the account
               block — the invitation keeps the middle of the screen. */}
           <View className="px-6 pb-[18px]">
             <Language />
           </View>
-        </>
+        </ScrollView>
       )}
     </SafeAreaView>
   );

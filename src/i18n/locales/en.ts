@@ -4,10 +4,8 @@ export default {
     list: 'List',
     add: 'Add',
     profile: 'Profile',
-    // What VoiceOver hears for a tab. The navigator would build this itself,
-    // in English whatever the app speaks; Android's TalkBack adds "tab" on its
-    // own, so this is iOS-only.
-    a11y: '{{label}}, tab, {{index}} of {{total}}',
+    // What VoiceOver hears for a tab — iOS only, as TalkBack says "tab" itself.
+    accessibilityLabel: '{{label}}, tab, {{index}} of {{total}}',
   },
   categories: {
     historic: 'Historic',
@@ -82,8 +80,8 @@ export default {
     // invitation rather than as decoration.
     emptyHint: 'Approved places show up here — the hora needs dancers.',
     emptyCta: 'Add the first place',
-    // A card as a screen reader hears it — the map card's words, in the order
-    // the card draws them, with the distance the map card has no room for.
+    // A card as a screen reader hears it, in the order the card draws it:
+    // category eyebrow, name, address, then the distance pill.
     card: '{{category}}, {{name}}, {{address}}, {{distance}}',
     // How many places the chips left, under the chips. i18next picks the form
     // from the language's own plural rules.

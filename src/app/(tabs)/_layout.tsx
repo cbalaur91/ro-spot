@@ -46,22 +46,29 @@ export default function TabsLayout() {
           tabBarLabelStyle: { fontSize: 11, letterSpacing: 0.2 },
         }}
       >
-        {TABS.map(({ name, label, icon }, index) => (
-          <Tabs.Screen
-            key={name}
-            name={name}
-            options={{
-              title: t(label),
-              // iOS only: left unset, the navigator reads "Hartă, tab, 1 of 4" —
-              // half English. TalkBack says "tab" itself, in the phone's language.
-              tabBarAccessibilityLabel:
-                Platform.OS === 'ios'
-                  ? t('tabs.a11y', { label: t(label), index: index + 1, total: TABS.length })
-                  : undefined,
-              tabBarIcon: tabIcon(icon),
-            }}
-          />
-        ))}
+        {TABS.map(({ name, label, icon }, index) => {
+          const title = t(label);
+
+          return (
+            <Tabs.Screen
+              key={name}
+              name={name}
+              options={{
+                title,
+                // Left unset, the navigator reads "Hartă, tab, 1 of 4" on iOS.
+                tabBarAccessibilityLabel:
+                  Platform.OS === 'ios'
+                    ? t('tabs.accessibilityLabel', {
+                        label: title,
+                        index: index + 1,
+                        total: TABS.length,
+                      })
+                    : undefined,
+                tabBarIcon: tabIcon(icon),
+              }}
+            />
+          );
+        })}
       </Tabs>
     </CategoryFilterProvider>
   );
